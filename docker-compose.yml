@@ -1,0 +1,8 @@
+version: '3'
+services:
+  exim:
+    build: .
+    ports:
+      - '25:25'
+    volumes:
+      - '$PWD/exim.conf:/etc/exim/exim.conf'

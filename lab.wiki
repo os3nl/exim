@@ -1,0 +1,171 @@
+====== MTA1 Template ======
+
+=== Q1. As per usual explain everything you have done in your log and how  ===
+
+The code can be found [[https://github.com/os3nl/exim|here]]
+
+== a. First make sure that your system does not contain a pre-installed version of the MTA of your choice if so remove it before you continue  == 
+<code>
+RUN (which exim && echo exim found && exit 1) || true
+</code>
+== b. Make sure the source code is retrieved from a secure location Use the official website for the MTA of your choice  == 
+<code>
+ARG EXIM_VERSION=4.91
+ARG EXIM_URL=ftp://mirror.easyname.at/exim-ftp/exim/exim4/exim-$EXIM_VERSION.tar.gz
+RUN wget -O /tmp/exim.tgz $EXIM_URL
+# which is from the first source found at https://www.exim.org/mirmon/ftp_mirrors.html
+</code>
+== c. Because it is important that an MTA be correct and secure it is often signed using a digital PGP signature If your MTA is signed then make sure Within reason please do not email the authors you have downloaded the correct sources by checking the validity of the key and the signature  == 
+<code>
+RUN wget -O /tmp/exim.asc $EXIM_URL.asc
+# which is signed by 'the file nigel-pubkey.asc'
+# src: https://www.exim.org/exim-html-current/doc/html/spec_html/ch-introduction.html
+ARG KEYFILEURL=ftp://mirror.easyname.at/exim-ftp/exim/nigel-pubkey.asc
+RUN wget -O /tmp/key $KEYFILEURL
+RUN gpg --import /tmp/key
+# But this failed:
+# gpg: Signature made Sun Apr 15 13:23:10 2018 UTC
+# gpg:                using RSA key BCE58C8CE41F32DF
+# gpg: Can't check signature: No public key
+# So we read further at the source above:
+# At time of last update, releases were being made by Jeremy Harris
+# and signed with key 0xBCE58C8CE41F32DF.
+# Other recent keys used for signing are those of Heiko Schlittermann,
+# 0x26101B62F69376CE, and of Phil Pennock, 0x4D1E900E14C1CC04.
+ARG KEYSURL=ftp://mirror.easyname.at/exim-ftp/exim/Exim-Maintainers-Keyring.asc
+ARG KEYSURL=http://exim.mirror.colo-serv.net/exim/Exim-Maintainers-Keyring.asc
+RUN wget -O /tmp/keys $KEYSURL
+RUN gpg --import /tmp/keys
+RUN gpg --verify /tmp/exim.asc /tmp/exim.tgz
+</code>
+
+which outputs:
+<code>
+Step 15/15 : RUN gpg --verify /tmp/exim.asc /tmp/exim.tgz
+ ---> Running in ebd8d8829baa
+gpg: Signature made Sun Apr 15 13:23:10 2018 UTC
+gpg:                using RSA key BCE58C8CE41F32DF
+gpg: Good signature from "Jeremy Harris (none) <jgh@wizmail.org>" [unknown]
+gpg:                 aka "Jeremy Harris <jgh@redhat.com>" [unknown]
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: A986 F3A6 BD63 77D8 7309  58DE BCE5 8C8C E41F 32DF
+</code>
+== d. There are a number of options that you will have to enter before compilation so that the functionality can be compiled into the program Make sure the basic install holds all the necessary functionality Show the options you configured  == 
+<code>
+ARG ALPINEMAKE=https://git.alpinelinux.org/cgit/aports/plain/community/exim/exim.Makefile
+RUN wget -O /tmp/exim/Local/Makefile $ALPINEMAKE
+RUN sed -i -e 's/-lnsl//g' -e 's/^HAVE_ICONV.*$//' \
+  /tmp/exim/OS/Makefile-Linux
+</code>
+
+The options used:
+<code>
+curl --silent \
+  https://git.alpinelinux.org/cgit/aports/plain/community/exim/exim.Makefile \
+  | sed -e 's/-lnsl//g' -e 's/^HAVE_ICONV.*$//'           
+AUTH_CRAM_MD5=yes
+AUTH_DOVECOT=yes
+AUTH_PLAINTEXT=yes
+AUTH_SPA=yes
+AUTH_TLS=yes
+BIN_DIRECTORY=/usr/sbin
+CFLAGS_DYNAMIC=-shared -rdynamic -fPIC
+COMPRESS_COMMAND=/bin/gzip
+COMPRESS_SUFFIX=gz
+CONFIGURE_FILE=/etc/exim/exim.conf
+CONFIGURE_FILE_USE_EUID=yes
+CONFIGURE_FILE_USE_NODE=yes
+EXICYCLOG_MAX=10
+EXIM_USER=ref:exim
+EXPAND_DLFUNC=yes
+EXPERIMENTAL_CERTNAMES=yes
+EXPERIMENTAL_EVENT=yes
+EXPERIMENTAL_INTERNATIONAL=yes
+EXPERIMENTAL_SOCKS=yes
+EXPERIMENTAL_SPF=yes
+EXTRALIBS_EXIM=-export-dynamic -rdynamic -ldl
+FIXED_NEVER_USERS=root
+HAVE_IPV6=YES
+HEADERS_CHARSET="ISO-8859-1"
+LDFLAGS += -lidn
+LDFLAGS += -lspf2
+LOG_FILE_PATH=/var/log/exim/%slog
+LOOKUP_CDB=2
+LOOKUP_DBM=2
+LOOKUP_DNSDB=2
+LOOKUP_DSEARCH=yes
+LOOKUP_LSEARCH=yes
+LOOKUP_MODULE_DIR=/usr/lib/exim/
+LOOKUP_MYSQL=2
+LOOKUP_MYSQL_INCLUDE=-I/usr/include/mysql
+LOOKUP_MYSQL_LIBS=-Wl,--no-as-needed -lmysqlclient
+LOOKUP_PASSWD=yes
+LOOKUP_PGSQL=2
+LOOKUP_PGSQL_INCLUDE=-I/usr/include/postgresql
+LOOKUP_PGSQL_LIBS=-Wl,--no-as-needed -lpq
+LOOKUP_SQLITE=2
+LOOKUP_SQLITE_LIBS=-Wl,--no-as-needed -lsqlite3
+MAKE_SHELL=/bin/bash
+NO_SYMLINK=yes
+PCRE_CONFIG=yes
+PCRE_LIBS=-lpcre
+PID_FILE_PATH=/run/exim.pid
+ROUTER_ACCEPT=yes
+ROUTER_DNSLOOKUP=yes
+ROUTER_IPLITERAL=yes
+ROUTER_IPLOOKUP=yes
+ROUTER_MANUALROUTE=yes
+ROUTER_QUERYPROGRAM=yes
+ROUTER_REDIRECT=yes
+SPOOL_DIRECTORY=/var/spool/exim
+SUPPORT_CRYPTEQ=yes
+SUPPORT_MAILDIR=yes
+SUPPORT_MOVE_FROZEN_MESSAGES=yes
+SUPPORT_PROXY=yes
+SUPPORT_TLS=yes
+SYSLOG_LOG_PID=no
+SYSTEM_ALIASES_FILE=/etc/mail/aliases
+TMPDIR="/tmp"
+TRANSPORT_APPENDFILE=yes
+TRANSPORT_AUTOREPLY=yes
+TRANSPORT_LMTP=yes
+TRANSPORT_PIPE=yes
+TRANSPORT_SMTP=yes
+USE_OPENSSL_PC=openssl
+WITH_CONTENT_SCAN=yes
+WITH_OLD_DEMIME=yes
+ZCAT_COMMAND=
+</code>
+
+Installing
+<code>
+RUN make Makefile
+RUN make -j1
+RUN make INSTALL_ARG="exim_dbmbuild exim_dumpdb exim_tidydb exim_fixdb exim_lock" install
+</code>
+
+=== Q2. Most of the options for an MTA can be found in a configuration file that will be loaded when the MTA starts It is recommended to start with an example configuration that looks a lot like what you need for now Show how you adapt it to your needs  ===
+
+=== Q3.  ===
+== a. Add a local account on your experimental machine and make sure that the MTA can deliver mail to it Show the required configuration  == 
+== b. Add to your log an email received by this account Do not forget the full headers  == 
+== c. Also make sure that any email intended for postmaster city prac os3 nl is delivered to this account Show the full email as delivered to the new account and the required configuration  == 
+
+=== Q4. First describe you have done on your own server to create two backup MTAs for your domain Please do not describe how you made your server fallback for the other domains at the same time that is the next question This makes grading easier for the lab teachers  ===
+
+=== Q5. Afterwards describe what you have done on your own server to make it act as a backup for the two other domains  ===
+
+=== Q6. Shutdown your MTA send a mail to your domain and show  ===
+== a. The email is delivered to one of your colleaques  == 
+== b. The email is delivered to your MTA when you turn it back on  == 
+
+=== Q7. Choose a console mail client that is available in the Ubuntu repositories install it and configure it to read mail for the account added before  ===
+== a. Where does the client store read emails?  == 
+== b. In what format?  == 
+
+=== Q8. Briefly explain  ===
+== a. what mail queues your mail server uses  == 
+== b. what is their purpose  == 
+== c. where are they located on your machine and  == 
+== d. how can you interact with them?  == 

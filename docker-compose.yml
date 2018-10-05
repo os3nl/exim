@@ -1,7 +1,7 @@
 version: '3'
 services:
   exim:
-    build: .
+    image: exim
     ports:
       - '25:25'
     volumes:

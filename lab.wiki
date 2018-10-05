@@ -143,6 +143,45 @@ Installing
 RUN make Makefile
 RUN make -j1
 RUN make INSTALL_ARG="exim_dbmbuild exim_dumpdb exim_tidydb exim_fixdb exim_lock" install
+RUN adduser -D exim
+RUN make INSTALL_ARG="exim" install
+# Since we have two, we symlink (/usr/sbin/exim-4.91-6  /usr/sbin/exim-4.91-8)
+RUN ln -s `ls /usr/sbin/exim-*|tail -1` /usr/sbin/exim
+ENTRYPOINT ["/usr/sbin/exim"]
+</code>
+
+The adduser was needed since we got:
+<code>
+*** Could not run ./exim -bV -C /dev/null to find version number ***
+*** Exim installation failed ***
+exim: failed to find uid for user name "exim"
+make: *** [Makefile:85: install] Error 1
+</code>
+
+After the installation we
+[[https://www.exim.org/exim-html-current/doc/html/spec_html/ch-building_and_installing_exim.html|test]] (ch.19):
+<code>
+docker run -it --rm exim -bV
+Exim version 4.91 #6 built 05-Oct-2018 13:04:27
+Copyright (c) University of Cambridge, 1995 - 2018
+(c) The Exim Maintainers and contributors in ACKNOWLEDGMENTS file, 2007 - 2018
+Berkeley DB: Berkeley DB 5.3.28: (September  9, 2013)
+Support for: crypteq IPv6 Expand_dlfunc OpenSSL move_frozen_messages Content_Scanning DKIM DNSSEC Event OCSP PRDR PROXY TCP_Fast_Open
+Lookups (built-in): lsearch wildlsearch nwildlsearch iplsearch dsearch passwd
+Authenticators: cram_md5 dovecot plaintext spa tls
+Routers: accept dnslookup ipliteral iplookup manualroute queryprogram redirect
+Transports: appendfile/maildir autoreply lmtp pipe smtp
+Malware: f-protd f-prot6d drweb aveserver fsecure kavdaemon sophie clamd mksd avast sock cmdline
+Fixed never_users: 0
+Configure owner: 0:0
+Size of off_t: 8
+2018-10-05 13:17:32 Couldn't open /usr/lib/exim/: not loading lookup modules
+
+2018-10-05 13:17:32 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-05 13:17:32 Warning: purging the environment.
+ Suggested action: use keep_environment.
+Configuration file is /etc/exim/exim.conf
 </code>
 
 === Q2. Most of the options for an MTA can be found in a configuration file that will be loaded when the MTA starts It is recommended to start with an example configuration that looks a lot like what you need for now Show how you adapt it to your needs  ===

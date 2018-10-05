@@ -147,6 +147,16 @@ RUN make INSTALL_ARG="exim_dbmbuild exim_dumpdb exim_tidydb exim_fixdb exim_lock
 
 === Q2. Most of the options for an MTA can be found in a configuration file that will be loaded when the MTA starts It is recommended to start with an example configuration that looks a lot like what you need for now Show how you adapt it to your needs  ===
 
+I retrieved the default config by doing
+<code>
+docker run -it --rm exim cat /etc/exim/exim.conf > exim.conf
+</code>
+
+Which I edited into:
+<code>
+
+</code>
+
 === Q3.  ===
 == a. Add a local account on your experimental machine and make sure that the MTA can deliver mail to it Show the required configuration  == 
 == b. Add to your log an email received by this account Do not forget the full headers  == 

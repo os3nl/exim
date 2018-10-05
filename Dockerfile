@@ -73,3 +73,5 @@ RUN make INSTALL_ARG="exim" install
 # Since we have two, we symlink (/usr/sbin/exim-4.91-6  /usr/sbin/exim-4.91-8)
 RUN ln -s `ls /usr/sbin/exim-*|tail -1` /usr/sbin/exim
 ENTRYPOINT ["/usr/sbin/exim"]
+
+CMD ["-bd", "-v"]

@@ -191,9 +191,217 @@ I retrieved the default config by doing
 docker run -it --rm exim cat /etc/exim/exim.conf > exim.conf
 </code>
 
-Which I edited into:
+But this was very large,
+online they suggested:
 <code>
+apt update
+apt install -y exim4-config 
+dpkg-reconfigure exim4-config
+</code>
 
+Generating the config:
+<code>
+root@8b810ce9eb73:/# dpkg-reconfigure exim4-config
+debconf: unable to initialize frontend: Dialog
+debconf: (No usable dialog-like program is installed, so the dialog based frontend cannot be used. at /usr/share/perl5/Debconf/FrontEnd/Dialog.pm line 76.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC contains: /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.24.1 /usr/local/share/perl/5.24.1 /usr/lib/x86_64-linux-gnu/perl5/5.24 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl/5.24 /usr/share/perl/5.24 /usr/local/lib/site_perl /usr/lib/x86_64-linux-gnu/perl-base .) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 7.)
+debconf: falling back to frontend: Teletype
+Mail Server configuration
+-------------------------
+
+Please select the mail server configuration type that best meets your needs.
+
+Systems with dynamic IP addresses, including dialup systems, should generally be configured to
+send outgoing mail to another machine, called a 'smarthost' for delivery because many receiving
+systems on the Internet block incoming mail from dynamic IP addresses as spam protection.
+
+A system with a dynamic IP address can receive its own mail, or local delivery can be disabled
+entirely (except mail for root and postmaster).
+
+  1. internet site; mail is sent and received directly using SMTP
+  2. mail sent by smarthost; received via SMTP or fetchmail
+  3. mail sent by smarthost; no local mail
+  4. local delivery only; not on a network
+  5. no configuration at this time
+General type of mail configuration: 1
+
+The 'mail name' is the domain name used to 'qualify' mail addresses without a domain name.
+
+This name will also be used by other programs. It should be the single, fully qualified domain
+name (FQDN).
+
+Thus, if a mail address on the local host is foo@example.org, the correct value for this option
+would be example.org.
+
+This name won't appear on From: lines of outgoing messages if rewriting is enabled.
+
+System mail name: nevers.studlab.os3.nl
+
+Please enter a semicolon-separated list of IP addresses. The Exim SMTP listener daemon will
+listen on all IP addresses listed here.
+
+An empty value will cause Exim to listen for connections on all available network interfaces.
+
+If this system only receives mail directly from local services (and not from other hosts), it is
+suggested to prohibit external connections to the local Exim daemon. Such services include
+e-mail programs (MUAs) which talk to localhost only as well as fetchmail. External connections
+are impossible when 127.0.0.1 is entered here, as this will disable listening on public network
+interfaces.
+
+IP-addresses to listen on for incoming SMTP connections: 
+
+Please enter a semicolon-separated list of recipient domains for which this machine should
+consider itself the final destination. These domains are commonly called 'local domains'. The
+local hostname (8b810ce9eb73) and 'localhost' are always added to the list given here.
+
+By default all local domains will be treated identically. If both a.example and b.example are
+local domains, acc@a.example and acc@b.example will be delivered to the same final destination.
+If different domain names should be treated differently, it is necessary to edit the config
+files afterwards.
+
+Other destinations for which mail is accepted: 
+
+Please enter a semicolon-separated list of recipient domains for which this system will relay
+mail, for example as a fallback MX or mail gateway. This means that this system will accept mail
+for these domains from anywhere on the Internet and deliver them according to local delivery
+rules.
+
+Do not mention local domains here. Wildcards may be used.
+
+Domains to relay mail for: hull.studlab.os3.nl : mulhouse.studlab.os3.nl
+
+Please enter a semicolon-separated list of IP address ranges for which this system will
+unconditionally relay mail, functioning as a smarthost.
+
+You should use the standard address/prefix format (e.g. 194.222.242.0/24 or
+5f03:1200:836f::/48).
+
+If this system should not be a smarthost for any other host, leave this list blank.
+
+Machines to relay mail for: 172.16.0.0/12
+
+In normal mode of operation Exim does DNS lookups at startup, and when receiving or delivering
+messages. This is for logging purposes and allows keeping down the number of hard-coded values
+in the configuration.
+
+If this system does not have a DNS full service resolver available at all times (for example if
+its Internet access is a dial-up line using dial-on-demand), this might have unwanted
+consequences. For example, starting up Exim or running the queue (even with no messages waiting)
+might trigger a costly dial-up-event.
+
+This option should be selected if this system is using Dial-on-Demand. If it has always-on
+Internet access, this option should be disabled.
+
+Keep number of DNS-queries minimal (Dial-on-Demand)? [yes/no] no
+
+Exim is able to store locally delivered email in different formats. The most commonly used ones
+are mbox and Maildir. mbox uses a single file for the complete mail folder stored in /var/mail/.
+With Maildir format every single message is stored in a separate file in ~/Maildir/.
+
+Please note that most mail tools in Debian expect the local delivery method to be mbox in their
+default.
+
+  1. mbox format in /var/mail/  2. Maildir format in home directory
+Delivery method for local mail: 2
+
+The Debian exim4 packages can either use 'unsplit configuration', a single monolithic file
+(/etc/exim4/exim4.conf.template) or 'split configuration', where the actual Exim configuration
+files are built from about 50 smaller files in /etc/exim4/conf.d/.
+
+Unsplit configuration is better suited for large modifications and is generally more stable,
+whereas split configuration offers a comfortable way to make smaller modifications but is more
+fragile and might break if modified carelessly.
+
+A more detailed discussion of split and unsplit configuration can be found in the
+Debian-specific README files in /usr/share/doc/exim4-base.
+
+Split configuration into small files? [yes/no] no
+
+Mail for the 'postmaster', 'root', and other system accounts needs to be redirected to the user
+account of the actual system administrator.
+
+If this value is left empty, such mail will be saved in /var/mail/mail, which is not
+recommended.
+
+Note that postmaster's mail should be read on the system to which it is directed, rather than
+being forwarded elsewhere, so (at least one of) the users listed here should not redirect their
+mail off this machine. A 'real-' prefix can be used to force local delivery.
+
+Multiple user names need to be separated by spaces.
+
+Root and postmaster mail recipient: os3student
+
+</code>
+
+Which generated:
+<code>
+root@8b810ce9eb73:/etc/exim4# grep -r os3 / 2> /dev/null                                         
+/etc/resolv.conf:search studlab.os3.nl
+/etc/mailname:nevers.studlab.os3.nl
+/etc/exim4/update-exim4.conf.conf:dc_relay_domains='hull.studlab.os3.nl : mulhouse.studlab.os3.nl'
+/etc/aliases:root: os3student
+/proc/kallsyms:0000000000000000 t dmi_smbios3_present
+^C
+root@8b810ce9eb73:/etc/exim4# cat /etc/mailname 
+nevers.studlab.os3.nl
+root@8b810ce9eb73:/etc/exim4# cat /etc/aliases 
+# /etc/aliases
+mailer-daemon: postmaster
+postmaster: root
+nobody: root
+hostmaster: root
+usenet: root
+news: root
+webmaster: root
+www: root
+ftp: root
+abuse: root
+noc: root
+security: root
+root: os3student
+root@8b810ce9eb73:/etc/exim4# cat /etc/exim4/update-exim4.conf.conf 
+# /etc/exim4/update-exim4.conf.conf
+#
+# Edit this file and /etc/mailname by hand and execute update-exim4.conf
+# yourself or use 'dpkg-reconfigure exim4-config'
+#
+# Please note that this is _not_ a dpkg-conffile and that automatic changes
+# to this file might happen. The code handling this will honor your local
+# changes, so this is usually fine, but will break local schemes that mess
+# around with multiple versions of the file.
+#
+# update-exim4.conf uses this file to determine variable values to generate
+# exim configuration macros for the configuration file.
+#
+# Most settings found in here do have corresponding questions in the
+# Debconf configuration, but not all of them.
+#
+# This is a Debian specific file
+
+dc_eximconfig_configtype='internet'
+dc_other_hostnames=''
+dc_local_interfaces=''
+dc_readhost=''
+dc_relay_domains='hull.studlab.os3.nl : mulhouse.studlab.os3.nl'
+dc_minimaldns='false'
+dc_relay_nets='172.16.0.0/12'
+dc_smarthost=''
+CFILEMODE='644'
+dc_use_split_config='false'
+dc_hide_mailname=''
+dc_mailname_in_oh='true'
+dc_localdelivery='maildir_home'
+</code>
+This
+[[http://www.learnlinux.org.za/courses/build/electives/ch04s02.html|three files]]
+contain the config.
+
+We saw in the
+[[buildlog|https://hub.docker.com/r/os3nl/exim/builds/bwmxkpc8jxznyluabhnazxs/]]:
+<code>
+cp: can't create '/etc/mail/aliases': No such file or directory
 </code>
 
 === Q3.  ===

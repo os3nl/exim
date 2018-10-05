@@ -5,4 +5,6 @@ services:
     ports:
       - '25:25'
     volumes:
-      - '$PWD/exim.conf:/etc/exim/exim.conf'
+      - $PWD/exim.conf:/etc/exim/exim.conf:ro
+      - $PWD/aliases:/etc/mail/aliases:ro
+      - $PWD/mailname:/etc/mail/mailname:ro

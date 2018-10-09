@@ -403,18 +403,179 @@ We saw in the
 <code>
 cp: can't create '/etc/mail/aliases': No such file or directory
 </code>
+So we moved aliases and mailname to /etc/mail.
+
+
+DNS records:
+<code>
+nevers.prac.os3.nl. IN MX 10 nevers.prac.os3.nl.
+nevers.prac.os3.nl. IN MX 20 mulhouse.prac.os3.nl.
+nevers.prac.os3.nl. IN MX 30 hull.prac.os3.nl.
+</code>
+
 
 === Q3.  ===
 == a. Add a local account on your experimental machine and make sure that the MTA can deliver mail to it Show the required configuration  == 
-== b. Add to your log an email received by this account Do not forget the full headers  == 
+
+The config settings before the acl part of the default config:
+<code>
+primary_hostname = nevers.prac.os3.nl
+domainlist local_domains = @ : nevers.prac.os3.nl
+domainlist relay_to_domains = hull.prac.os3.nl : mulhouse.prac.os3.nl
+hostlist   relay_from_hosts = localhost : 172.16.0.0/12 : 192.168.0.0/16 : hull.prac.os3.nl : mulhouse.prac.os3.nl
+acl_smtp_rcpt = acl_check_rcpt
+acl_smtp_data = acl_check_data
+daemon_smtp_ports = 25
+host_lookup = *
+prdr_enable = true
+log_selector = +smtp_protocol_error +smtp_syntax_error \
+	+tls_certificate_verified
+
+</code>
+The remaining of the file is the default config of exim.
+See the full config file [[https://github.com/os3nl/exim/blob/master/exim.conf|here]].
+
+We needed a user:
+<code>
+2018-10-09 12:29:48 1g9r5b-00000C-OC ** os3student@nevers.prac.os3.nl <postmaster@nevers.prac.os3.nl>: Unknown user
+</code>
+
+So I initially deleted the alias from root to student, but:
+<code>
+2018-10-09 12:26:16 1g9r5b-00000C-OC <= test@tools.wormly.com H=tools.wormly.com [96.126.113.160] P=esmtps X=TLSv1:DHE-RSA-AES256-SHA:256 CV=no S=747 id=94ec847455c7a2fbfa0afed33c231fd6@blog.wormly.com
+2018-10-09 12:26:16 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-09 12:26:16 1g9r5b-00000C-OC User 0 set for local_delivery transport is on the fixed_never_users list
+2018-10-09 12:26:16 1g9r5b-00000C-OC == root@nevers.prac.os3.nl <postmaster@nevers.prac.os3.nl> R=localuser T=local_delivery defer (-29): User 0 set for local_delivery transport is on the fixed_never_users list
+</code>
+But during compiling it made root not allowed as a user (fixed_never_users).
+
+So we did:
+<code>
+adduser -D os3student
+</code>
+
+But this was not enough:
+<code>
+2018-10-09 12:36:45 1g9rFk-00000U-QH == os3student@nevers.prac.os3.nl <postmaster@nevers.prac.os3.nl> R=localuser T=local_delivery defer (13): Permission denied: failed to create directories for /var/mail: Permission denied
+
+mkdir -p /var/mail/os3student
+</code>
+
+And later we got desperate:
+<code>
+2018-10-09 12:38:28 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-09 12:38:28 1g9rHP-00000b-PM == os3student@nevers.prac.os3.nl <postmaster@nevers.prac.os3.nl> R=localuser T=local_delivery defer (13): Permission denied: creating lock file hitching post /var/mail/os3student.lock.nevers.prac.os3.nl.5bbca144.00000028 (euid=1000 egid=1000)
+
+chmod 777 /var/mail
+
+2018-10-09 12:39:55 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-09 12:39:55 1g9rIo-00000h-Or == os3student@nevers.prac.os3.nl <postmaster@nevers.prac.os3.nl> R=localuser T=local_delivery defer (-6): mailbox /var/mail/os3student has wrong uid (0 != 1000)
+
+chown os3student:os3student /var/mail/os3student
+
+2018-10-09 12:42:35 1g9rLP-00000s-3R == os3student@nevers.prac.os3.nl <postmaster@nevers.prac.os3.nl> R=localuser T=local_delivery defer (-4): mailbox /var/mail/os3student has too many links (2)
+
+rm -r /var/mail/os3student
+
+2018-10-09 12:45:00 1g9rNj-000019-PV => os3student <postmaster@nevers.prac.os3.nl> R=localuser T=local_delivery
+2018-10-09 12:45:00 1g9rNj-000019-PV Completed
+</code>
+At the end, we received an email!
+
+== b. Add to your log an email received by this account Do not forget the full headers  ==
+
+<code>
+/var/mail # cat os3student 
+From test@tools.wormly.com Tue Oct 09 12:45:00 2018
+Return-path: <test@tools.wormly.com>
+Envelope-to: postmaster@nevers.prac.os3.nl
+Delivery-date: Tue, 09 Oct 2018 12:45:00 +0000
+Received: from tools.wormly.com ([96.126.113.160])
+        by nevers.prac.os3.nl with esmtps (TLSv1:DHE-RSA-AES256-SHA:256)
+        (Exim 4.91)
+        (envelope-from <test@tools.wormly.com>)
+        id 1g9rNj-000019-PV
+        for postmaster@nevers.prac.os3.nl; Tue, 09 Oct 2018 12:45:00 +0000
+Date: Tue, 9 Oct 2018 12:44:58 +0000
+To: postmaster@nevers.prac.os3.nl
+From: Wormly SMTP Test <test@tools.wormly.com>
+Subject: Wormly SMTP Test Message
+Message-ID: <d94a10d7734a6e082bed22fbafe3e4ce@blog.wormly.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+
+This message was sent using the Wormly SMTP testing tool by this user:
+Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36
+145.109.39.37
+</code>
+Send by [[https://www.wormly.com/test-smtp-server|this]] online tool.
+
 == c. Also make sure that any email intended for postmaster city prac os3 nl is delivered to this account Show the full email as delivered to the new account and the required configuration  == 
+
+The aliases file makes postmaster point to root, and root point to os3student:
+<code>
+mailer-daemon: postmaster
+postmaster: root
+nobody: root
+hostmaster: root
+usenet: root
+news: root
+webmaster: root
+www: root
+ftp: root
+abuse: root
+noc: root
+security: root
+root: os3student
+</code>
+
+Which is who we emailed in the question b.
+
 
 === Q4. First describe you have done on your own server to create two backup MTAs for your domain Please do not describe how you made your server fallback for the other domains at the same time that is the next question This makes grading easier for the lab teachers  ===
 
+As seen in the config, we added the two others (with higher value, so lower prio) to DNS.
+
+
 === Q5. Afterwards describe what you have done on your own server to make it act as a backup for the two other domains  ===
+
+On my own server, I allow relaying in my exim config.
 
 === Q6. Shutdown your MTA send a mail to your domain and show  ===
 == a. The email is delivered to one of your colleaques  == 
+
+<code>
+docker-compose stop
+Stopping exim_exim_1 ... done
+</code>
+
+after many failes, it was a DNS problem:
+<code>
+;; ANSWER SECTION:
+nevers.prac.os3.nl.     60      IN      MX      30 hull.prac.os3.nl.
+nevers.prac.os3.nl.     60      IN      MX      10 nevers.prac.os3.nl.
+nevers.prac.os3.nl.     60      IN      MX      21 mail.mulhouse.prac.os3.nl.
+nevers.prac.os3.nl.     60      IN      MX      31 mail.hull.prac.os3.nl.
+nevers.prac.os3.nl.     60      IN      MX      20 mulhouse.prac.os3.nl.
+</code>
+
+Since Kees was gone and David his server said error 550 (recepient denied),
+I set up my own second server..
+
+DNS
+<code>
+nevers.prac.os3.nl. IN MX 10 nevers.prac.os3.nl.
+mail.nevers.prac.os3.nl. IN CNAME nevers.prac.os3.nl. ; for kees
+nevers.prac.os3.nl. IN MX 11 secondary.nevers.prac.os3.nl.
+nevers.prac.os3.nl. IN MX 20 mulhouse.prac.os3.nl.
+nevers.prac.os3.nl. IN MX 21 mail.mulhouse.prac.os3.nl.
+nevers.prac.os3.nl. IN MX 30 hull.prac.os3.nl.
+nevers.prac.os3.nl. IN MX 31 mail.hull.prac.os3.nl.
+</code>
+
 == b. The email is delivered to your MTA when you turn it back on  == 
 
 === Q7. Choose a console mail client that is available in the Ubuntu repositories install it and configure it to read mail for the account added before  ===
@@ -426,3 +587,4 @@ cp: can't create '/etc/mail/aliases': No such file or directory
 == b. what is their purpose  == 
 == c. where are they located on your machine and  == 
 == d. how can you interact with them?  == 
+

@@ -3,8 +3,16 @@ services:
   exim:
     image: exim
     ports:
-      - '25:25'
+      - '145.100.104.117:25:25'
     volumes:
       - $PWD/exim.conf:/etc/exim/exim.conf:ro
       - $PWD/aliases:/etc/mail/aliases:ro
       - $PWD/mailname:/etc/mail/mailname:ro
+  backup:
+    image: exim
+    ports:
+      - '145.100.111.10:25:25'
+    volumes:
+      - $PWD/exim2.conf:/etc/exim/exim.conf:ro
+      - $PWD/aliases:/etc/mail/aliases:ro
+      - $PWD/mailname2:/etc/mail/mailname:ro

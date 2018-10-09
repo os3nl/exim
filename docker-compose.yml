@@ -8,6 +8,8 @@ services:
       - $PWD/exim.conf:/etc/exim/exim.conf:ro
       - $PWD/aliases:/etc/mail/aliases:ro
       - $PWD/mailname:/etc/mail/mailname:ro
+    command: ["/usr/sbin/exim","-bdf", "-q15m"]
+    entrypoint: ["chmod","777","/var/mail;","adduser","-D","os3student;"]
   backup:
     image: exim
     ports:
@@ -16,3 +18,5 @@ services:
       - $PWD/exim2.conf:/etc/exim/exim.conf:ro
       - $PWD/aliases:/etc/mail/aliases:ro
       - $PWD/mailname2:/etc/mail/mailname:ro
+    entrypoint: ["chmod","777","/var/mail;","adduser","-D","os3student;"]
+    command: ["/usr/sbin/exim","-bdf", "-q15m"]

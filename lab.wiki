@@ -646,6 +646,94 @@ From which the most important part:
 temporarily rejected RCPT <test@nevers.prac.os3.nl>: Could not complete sender verify
 </code>
 
+When shutting down our main again,
+we test with another
+[[https://www.ultratools.com/tools/emailTestResult|website]],
+which output:
+<code>
+MX Record Target: 10 nevers.prac.os3.nl.
+IP address: 145.100.104.117 (netherlands)
+Status: Connect failed
+Test duration(ms): Timed out...
+
+MX Record Target: 11 secondary.nevers.prac.os3.nl
+.IP address: 145.100.111.10 (netherlands)
+Status: Success
+Test duration(ms): 3225
+
+MX Record Target: 20 mulhouse.prac.os3.nl.
+MX Record Target: 21 mail.mulhouse.prac.os3.nl.
+IP address: 145.100.104.115 (netherlands)
+Status: Connect failed
+Test duration(ms): Timed out...
+
+MX Record Target: 30 hull.prac.os3.nl.
+MX Record Target: 31 mail.hull.prac.os3.nl.
+IP address: 145.100.104.167 (netherlands)
+Status: Connect failed
+Test duration(ms): Timed out...
+</code>
+
+So we send an email:
+<code>
+root@nevers:~/exim# docker-compose stop exim
+Stopping exim_exim_1 ... done
+root@nevers:~/exim# docker exec -it exim_backup_1 sh
+/ # cat /var/log/exim/mainlog 
+. . .
+2018-10-10 11:46:49 1gACwz-000029-Lx <= sanderlentink@mdmail.nl H=nevers.local (secondary.nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=12153 id=CAMU2pL8W6bU3n2rxB995vH4curw7A+S5kyVyD9-T0zASPsgh6Q@mail.gmail.com
+2018-10-10 11:46:49 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-10 11:46:49 1gACwz-000029-Lx ** postmaster@nevers.prac.os3.nl: Too many "Received" headers - suspected mail loop
+2018-10-10 11:46:49 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-10 11:46:49 1gACwz-000025-Fp => postmaster@nevers.prac.os3.nl R=dnslookup T=remote_smtp H=secondary.nevers.prac.os3.nl [145.100.111.10] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 3886 byte chunk, total 12077\\n250 OK id=1gACwz-000029-Lx"
+2018-10-10 11:46:49 1gACwz-000025-Fp Completed
+2018-10-10 11:46:49 1gACwz-00002C-Ph <= <> R=1gACwz-000029-Lx U=exim P=local S=13380
+2018-10-10 11:46:49 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-10 11:46:49 1gACwz-00002C-Ph H=aspmx.l.google.com [2a00:1450:4013:c00::1a] Address not available
+2018-10-10 11:46:49 1gACwz-000029-Lx Completed
+2018-10-10 11:46:51 1gACwz-00002C-Ph => sanderlentink@mdmail.nl R=dnslookup T=remote_smtp H=aspmx.l.google.com [108.177.126.27] X=TLSv1.2:ECDHE-RSA-CHACHA20-POLY1305:256 CV=yes K C="250 2.0.0 OK f20-v6si5665338edt.166 - gsmtp"
+2018-10-10 11:46:51 1gACwz-00002C-Ph Completed
+</code>
+
+We see that the retry on our backup server has been updated:
+<code>
+/ # find / -name exim
+/etc/conf.d/exim
+/etc/logrotate.d/exim
+/etc/init.d/exim
+/etc/exim
+/var/spool/exim
+/var/log/exim
+/usr/lib/exim
+/usr/sbin/exim
+/ # cd /var/spool/exim
+/var/spool/exim # ls -al
+total 20
+drwxr-x---    5 exim     exim          4096 Oct 10 11:46 .
+drwxr-xr-x    1 root     root          4096 Oct 10 11:40 ..
+drwxr-x---    2 exim     exim          4096 Oct 10 11:46 db
+drwxr-x---    2 exim     exim          4096 Oct 10 11:46 input
+drwxr-x---    2 exim     exim          4096 Oct 10 11:46 msglog
+/var/spool/exim # cd msglog
+/var/spool/exim/msglog # ls -al
+total 8
+drwxr-x---    2 exim     exim          4096 Oct 10 11:46 .
+drwxr-x---    5 exim     exim          4096 Oct 10 11:46 ..
+/var/spool/exim/msglog # cd ..
+/var/spool/exim # cd db
+/var/spool/exim/db # ls -al
+total 24
+drwxr-x---    2 exim     exim          4096 Oct 10 11:46 .
+drwxr-x---    5 exim     exim          4096 Oct 10 11:46 ..
+-rw-r-----    1 exim     exim         12288 Oct 10 11:46 retry
+-rw-r-----    1 exim     exim             0 Oct 10 11:46 retry.lockfile
+-rw-r-----    1 exim     exim         12288 Oct 10 11:46 wait-remote_smtp
+-rw-r-----    1 exim     exim             0 Oct 10 11:46 wait-remote_smtp.lockfile
+</code>
+We see that the modification time is the same as we saw in our log.
 
 === Q7. Choose a console mail client that is available in the Ubuntu repositories install it and configure it to read mail for the account added before  ===
 == a. Where does the client store read emails?  == 

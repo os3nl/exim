@@ -3,7 +3,7 @@ services:
   exim:
     image: exim
     ports:
-      - '145.100.104.117:25:25'
+      - '145.100.111.9:25:25' #make sure 'dig -x IP' works!
     volumes:
       - $PWD/exim.conf:/etc/exim/exim.conf:ro
       - $PWD/aliases:/etc/mail/aliases:ro

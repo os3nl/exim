@@ -9,7 +9,7 @@ services:
       - $PWD/aliases:/etc/mail/aliases:ro
       - $PWD/mailname:/etc/mail/mailname:ro
     entrypoint: ["sh","-c"]
-    command: ["chmod 777 /var/mail; adduser -D os3student; /usr/sbin/exim -bdf -q15m"]
+    command: ["mkdir -p /var/mail; chmod 777 /var/mail; adduser -D os3student; /usr/sbin/exim -bdf -q15m"]
   backup:
     image: exim
     ports:
@@ -19,4 +19,4 @@ services:
       - $PWD/aliases:/etc/mail/aliases:ro
       - $PWD/mailname2:/etc/mail/mailname:ro
     entrypoint: ["sh","-c"]
-    command: ["chmod 777 /var/mail; adduser -D os3student; /usr/sbin/exim -bdf -q15m"]
+    command: ["mkdir -p /var/mail; chmod 777 /var/mail; adduser -D os3student; /usr/sbin/exim -bdf -q15m"]

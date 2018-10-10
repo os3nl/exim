@@ -576,7 +576,76 @@ nevers.prac.os3.nl. IN MX 30 hull.prac.os3.nl.
 nevers.prac.os3.nl. IN MX 31 mail.hull.prac.os3.nl.
 </code>
 
+Having two, shutting down one:
+<code>
+root@nevers:~/exim# docker-compose ps
+    Name                   Command               State             Ports           
+-----------------------------------------------------------------------------------
+exim_backup_1   sh -c chmod 777 /var/mail; ...   Up      145.100.111.10:25->25/tcp 
+exim_exim_1     sh -c chmod 777 /var/mail; ...   Up      145.100.104.117:25->25/tcp
+root@nevers:~/exim# docker-compose stop exim
+Stopping exim_exim_1 ... done
+</code>
+
+When sending an email we get:
+<code>
+~ # ls -alh /var/log/exim/mainlog 
+-rw-r-----    1 exim     exim       53.0K Oct  9 19:38 /var/log/exim/mainlog
+~ # tail /var/log/exim/mainlog 
+2018-10-09 19:38:58 1g9xqL-00003z-Ut => postmaster@nevers.prac.os3.nl R=dnslookup T=remote_smtp H=secondary.nevers.prac.os3.nl [145.100.111.10] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 10625 byte chunk, total 18844\\n250 OK id=1g9xqM-000043-3e"
+2018-10-09 19:38:58 1g9xqL-00003z-Ut Completed
+2018-10-09 19:38:58 1g9xqM-000043-3e [145.100.111.10] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=secondary.nevers.prac.os3.nl
+2018-10-09 19:38:58 1g9xqM-000047-97 <= <> H=nevers.local (secondary.nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=19008 id=E1g9xqH-00002A-1c@secondary.nevers.prac.os3.nl
+2018-10-09 19:38:58 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-09 19:38:58 1g9xqM-000047-97 ** postmaster@nevers.prac.os3.nl: Too many "Received" headers - suspected mail loop
+2018-10-09 19:38:58 1g9xqM-000047-97 Frozen (delivery error message)
+2018-10-09 19:38:58 1g9xqM-000043-3e => postmaster@nevers.prac.os3.nl R=dnslookup T=remote_smtp H=secondary.nevers.prac.os3.nl [145.100.111.10] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 10625 byte chunk, total 19115\\n250 OK id=1g9xqM-000047-97"
+2018-10-09 19:38:58 1g9xqM-000043-3e Completed
+</code>
+Indeed a loop.
+
+So we sent from an external source
+and see in our logs:
+<code>
+root@nevers:~/bind/lab4# docker exec -it exim_backup_1 sh                                                
+/ # tail /var/log/exim/mainlog 
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-10 06:11:36 1gA7ia-00008b-DD => postmaster@nevers.prac.os3.nl R=dnslookup T=remote_smtp H=secondary.nevers.prac.os3.nl [145.100.111.10] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 3887 byte chunk, total 12078\\n250 OK id=1gA7ia-00008f-IW"
+2018-10-10 06:11:36 1gA7ia-00008b-DD Completed
+2018-10-10 06:11:36 1gA7ia-00008i-M0 <= <> R=1gA7ia-00008f-IW U=exim P=local S=13382
+2018-10-10 06:11:36 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-10 06:11:36 1gA7ia-00008i-M0 H=aspmx.l.google.com [2a00:1450:4013:c07::1b] Address not available
+2018-10-10 06:11:36 1gA7ia-00008f-IW Completed
+2018-10-10 06:11:38 1gA7ia-00008i-M0 => sanderlentink@mdmail.nl R=dnslookup T=remote_smtp H=aspmx.l.google.com [173.194.79.26] X=TLSv1.2:ECDHE-RSA-CHACHA20-POLY1305:256 CV=yes K C="250 2.0.0 OK a36-v6si16944297edd.80 - gsmtp"
+2018-10-10 06:11:38 1gA7ia-00008i-M0 Completed
+</code>
+
 == b. The email is delivered to your MTA when you turn it back on  == 
+
+Now we turn on our main server and wait for a moment:
+<code>
+root@nevers:~/exim# docker-compose start exim
+Starting exim ... done
+root@nevers:~/exim# docker exec -it exim_exim_1 sh
+/ # tail /var/log/exim/mainlog 
+ Suggested action: use keep_environment.
+2018-10-10 06:13:41 exim 4.91 daemon started: pid=1, -q15m, listening for SMTP on port 25 (IPv6 and IPv4)
+2018-10-10 06:13:41 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-10 06:13:41 Start queue run: pid=11
+2018-10-10 06:13:41 End queue run: pid=11
+2018-10-10 06:20:02 H=hull.studlab.os3.nl (mail.pickering.hull.prac.os3.nl) [145.100.104.167] sender verify defer for <dgaray@mail.pickering.hull.prac.os3.nl>: host lookup did not complete
+2018-10-10 06:20:02 H=hull.studlab.os3.nl (mail.pickering.hull.prac.os3.nl) [145.100.104.167] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no F=<dgaray@mail.pickering.hull.prac.os3.nl> temporarily rejected RCPT <test@nevers.prac.os3.nl>: Could not complete sender verify
+2018-10-10 06:20:14 H=mulhouse.studlab.os3.nl (mail.mulhouse.prac.os3.nl) [145.100.104.115] sender verify defer for <dgaray@mail.pickering.hull.prac.os3.nl>: host lookup did not complete
+2018-10-10 06:20:14 H=mulhouse.studlab.os3.nl (mail.mulhouse.prac.os3.nl) [145.100.104.115] F=<dgaray@mail.pickering.hull.prac.os3.nl> temporarily rejected RCPT <test@nevers.prac.os3.nl>: Could not complete sender verify
+</code>
+From which the most important part:
+<code>
+temporarily rejected RCPT <test@nevers.prac.os3.nl>: Could not complete sender verify
+</code>
+
 
 === Q7. Choose a console mail client that is available in the Ubuntu repositories install it and configure it to read mail for the account added before  ===
 == a. Where does the client store read emails?  == 

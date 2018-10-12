@@ -399,7 +399,7 @@ This
 contain the config.
 
 We saw in the
-[[buildlog|https://hub.docker.com/r/os3nl/exim/builds/bwmxkpc8jxznyluabhnazxs/]]:
+[[https://hub.docker.com/r/os3nl/exim/builds/bwmxkpc8jxznyluabhnazxs/|buildlog]]:
 <code>
 cp: can't create '/etc/mail/aliases': No such file or directory
 </code>
@@ -538,14 +538,18 @@ Which is who we emailed in the question b.
 === Q4. First describe you have done on your own server to create two backup MTAs for your domain Please do not describe how you made your server fallback for the other domains at the same time that is the next question This makes grading easier for the lab teachers  ===
 
 As seen in the config, we added the two others (with higher value, so lower prio) to DNS.
+The config is included in Q6 and
+[[https://github.com/os3nl/bind/commit/3c479a26df3e7af89d9c4df51b26a96b51c540cb|this]]
+is the last commit msg.
 
 
 === Q5. Afterwards describe what you have done on your own server to make it act as a backup for the two other domains  ===
 
-On my own server, I allow relaying in my exim config.
+On my own server, I allow relaying in my exim config
+But we read later that this was not the solution,
+it needed extra localdomains in my exim config.
 
 === Q6. Shutdown your MTA send a mail to your domain and show  ===
-== a. The email is delivered to one of your colleaques  == 
 
 <code>
 docker-compose stop
@@ -563,7 +567,7 @@ nevers.prac.os3.nl.     60      IN      MX      20 mulhouse.prac.os3.nl.
 </code>
 
 Since Kees was gone and David his server said error 550 (recepient denied),
-I set up my own second server..
+I set up my own second(ary) server..
 
 DNS
 <code>
@@ -621,8 +625,6 @@ root@nevers:~/bind/lab4# docker exec -it exim_backup_1 sh
 2018-10-10 06:11:38 1gA7ia-00008i-M0 => sanderlentink@mdmail.nl R=dnslookup T=remote_smtp H=aspmx.l.google.com [173.194.79.26] X=TLSv1.2:ECDHE-RSA-CHACHA20-POLY1305:256 CV=yes K C="250 2.0.0 OK a36-v6si16944297edd.80 - gsmtp"
 2018-10-10 06:11:38 1gA7ia-00008i-M0 Completed
 </code>
-
-== b. The email is delivered to your MTA when you turn it back on  == 
 
 Now we turn on our main server and wait for a moment:
 <code>
@@ -735,13 +737,354 @@ drwxr-x---    5 exim     exim          4096 Oct 10 11:46 ..
 </code>
 We see that the modification time is the same as we saw in our log.
 
+I overlooked something:
+<code>
+2018-10-10 12:19:47 H=mulhouse.studlab.os3.nl (mail.mulhouse.prac.os3.nl) [145.100.104.115] sender verify defer for <dgaray@mail.pickering.hull.prac.os3.nl>: host lookup did not complete
+</code>
+
+So we updated the DNS,
+the IP lookup is
+[[https://github.com/os3nl/bind/blob/7848449a816d1b02e391f5ece4ec02c93480c914/myzone.conf|added]].
+And used another IP:
+<code>
+ip a a 145.100.111.9 dev eno1
+</code>
+
+
+<code>
+2018-10-10 13:11:30 1gAEGw-00002G-6Q Completed
+2018-10-10 13:11:30 1gAEGw-00002K-D6 [145.100.111.10] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=secondary.nevers.prac.os3.nl
+2018-10-10 13:11:30 1gAEGw-00002O-JP <= sanderlentink@mdmail.nl H=nevers.local (secondary.nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=12147 id=CAMU2pL_knDfVfhcXRt2xOmC5LVFLgO2Mm-rj1Gj=gU7REy5Z4g@mail.gmail.com
+2018-10-10 13:11:30 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-10 13:11:30 1gAEGw-00002O-JP ** postmaster@nevers.prac.os3.nl: Too many "Received" headers - suspected mail loop
+2018-10-10 13:11:30 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-10 13:11:30 1gAEGw-00002K-D6 => postmaster@nevers.prac.os3.nl R=dnslookup T=remote_smtp H=secondary.nevers.prac.os3.nl [145.100.111.10] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 3879 byte chunk, total 12070\\n250 OK id=1gAEGw-00002O-JP"
+2018-10-10 13:11:30 1gAEGw-00002K-D6 Completed
+2018-10-10 13:11:30 1gAEGw-00002R-Mh <= <> R=1gAEGw-00002O-JP U=exim P=local S=13374
+2018-10-10 13:11:30 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-10 13:11:30 1gAEGw-00002R-Mh H=aspmx.l.google.com [2a00:1450:4013:c04::1a] Address not available
+2018-10-10 13:11:30 1gAEGw-00002O-JP Completed
+2018-10-10 13:11:31 1gAEGw-00002R-Mh => sanderlentink@mdmail.nl R=dnslookup T=remote_smtp H=aspmx.l.google.com [173.194.69.27] X=TLSv1.2:ECDHE-RSA-CHACHA20-POLY1305:256 CV=yes K C="250 2.0.0 OK d19-v6si5585723ejj.256 - gsmtp"
+2018-10-10 13:11:31 1gAEGw-00002R-Mh Completed
+</code>
+
+To fight the host lookup msg in the logs and allow test websites we use:
+<code>
+hostlist   relay_from_hosts = 0.0.0.0/0
+#host_lookup = *
+domainlist local_domains = secondary.nevers.prac.os3.nl : nevers.prac.os3.nl
+</code>
+
+== a. The email is delivered to one of your colleaques  == 
+
+We end with:
+<code>
+root@nevers:~/exim# docker exec -it exim_backup_1 cat /var/mail/os3student
+From svlentink@gmail.com Thu Oct 11 12:16:00 2018
+Return-path: <svlentink@gmail.com>
+Envelope-to: postmaster@nevers.prac.os3.nl
+Delivery-date: Thu, 11 Oct 2018 12:16:00 +0000
+Received: from [209.85.208.180] (helo=mail-lj1-f180.google.com)
+        by secondary.nevers.prac.os3.nl with esmtps (TLSv1.2:ECDHE-RSA-AES128-GCM-SHA256:128)
+        (Exim 4.91)
+        (envelope-from <svlentink@gmail.com>)
+        id 1gAZsm-00000E-JO
+        for postmaster@nevers.prac.os3.nl; Thu, 11 Oct 2018 12:16:00 +0000
+Received: by mail-lj1-f180.google.com with SMTP id u21-v6so7984334lja.8
+        for <postmaster@nevers.prac.os3.nl>; Thu, 11 Oct 2018 05:16:00 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:from:date:message-id:subject:to;
+        bh=ny+g4e/micnZNhkomWRO8juf9DB22RUocUfigCLaXww=;
+        b=KbDukoDhJbgtJGi6/nVIZRqwE2IVQttk0n47xoIWZrrpUDB+19cMzBFBmcg7rCmKV0
+         rjcNlPeCXRiHDWSmYaGk84QzqhtEQtUoW8MLy7b/K4dsIq3QMRgr63QziiXpFvSeqqdj
+         LZLkp6LT8uRlLRDb0UNNShX5rE+vmI+c4lZELr6h2ye0M1GQmvxClORxutg+zHcmuGth
+         lWG6SG+wP2C2/qnJ+1X3Xsf1Q8CS0kJL9WFC2mbtdii+TATcRRiBE6t4aGVyyejzJX+G
+         FCSB8uvrKocMXdtHl20Fo9bJPaKVttIPa5KxnIqQpRv33w47uqn6wAhse3o81aQJd/gA
+         N3Fg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
+        bh=ny+g4e/micnZNhkomWRO8juf9DB22RUocUfigCLaXww=;
+        b=NZJ7xTgWGKWwNTGXdxajkTV0RGZOVZMG62g7E6yMNxf+5UAI05fy7fO0RuBqlVCplx
+         F4PW9Oau7YUg4lqmfWc/mhtHSO/tHaEVXnHznQqR6QsmPSde+HXqG0V8MINlenbQVS6u
+         KD5Z8/pyPytfVutaeGsL/9oxZ4FFVnyona1AZsRK+y3t8QI2rkSCPdRCQLc9hQ0t8mYF
+         92zBWQrhzPM5++MbTv8s4YBgedFst5SmnxbYMmVBUr3CMjGJa1j6pStgIb2SYirClggr
+         fu54kaAaA2sd/BDH7Xfdc8yqAqjlvo/U2cbsMLU1qFMsyojMlnDkVwQRL/kF9IStjIXc
+         SoEw==
+X-Gm-Message-State: ABuFfoiRRpKfZWbkWU1Nba0jO6hb54Euuc1qbPEv9p8mOt96UWyVGmY9
+        8RmnwpkO71MoIbJ3nBeZ6oiOaJmjDPXQOu6Vaq8J0A==
+X-Google-Smtp-Source: ACcGV624o4tiwCRSU59nnJXetTt1e8qAYWfIYVsAFOqk/JWR4jx4T4ZKLmlX5oo17cZH1N9qW2nsB4zuTUwyvEm+WZE=
+X-Received: by 2002:a2e:8797:: with SMTP id n23-v6mr1053638lji.173.1539260159381;
+ Thu, 11 Oct 2018 05:15:59 -0700 (PDT)
+MIME-Version: 1.0
+From: Sander Lentink <svlentink@gmail.com>
+Date: Thu, 11 Oct 2018 14:15:47 +0200
+Message-ID: <CAM=p=-XFUfwA-3nFY6RCTDmWQ+0GMFDzMySLEtgbKpUM_X-DVg@mail.gmail.com>
+Subject: test
+To: postmaster@nevers.prac.os3.nl
+Content-Type: multipart/alternative; boundary="0000000000000454920577f2efbe"
+
+--0000000000000454920577f2efbe
+Content-Type: text/plain; charset="UTF-8"
+
+aabb
+Yours sincerely / Met vriendelijke groet,
+
+Sander Lent.ink <http://lent.ink>
+0031617012655
+
+--0000000000000454920577f2efbe
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<div dir=3D"ltr">aabb<br clear=3D"all"><div><div dir=3D"ltr" class=3D"gmail=
+_signature" data-smartmail=3D"gmail_signature"><div dir=3D"ltr"><div><div d=
+ir=3D"ltr">Yours sincerely / Met vriendelijke groet,<br>
+<br>
+Sander=C2=A0<a href=3D"http://lent.ink" target=3D"_blank">Lent.ink</a><br>
+0031617012655</div></div></div></div></div></div>
+
+--0000000000000454920577f2efbe--
+</code>
+
+The issue was: confusion...
+I thought the intended behaviour was that the backup mailserver would accept the mail,
+store it in its queue.
+That the relay config option did this.
+However, the relay does not do this, it just relays,
+for which the receiving party needs to be online.
+It is not all that hard, we just needed the second localdomain added,
+so it was able to store for the other domain,
+just like the question stated:
+"backup MTAs will receive email intended for your domain".
+This was all my bad.
+The pointer records I installed were nice, but not needed.
+
+But to recap the requirements:
+we let all the server accept (localdomains) for all domains
+and have the appropriate aliases in place.
+This also ment that I created the user(s).
+
+Reverse lookup (PTR) is not needed, but nice to have.
+We need the right MX and A records, mine were:
+<code>
+secondary.nevers.prac.os3.nl. IN A 145.100.111.10 ; glue
+
+; mail labs:
+mailserver.nevers.prac.os3.nl. IN A 145.100.111.9
+nevers.prac.os3.nl. IN MX 10 mailserver.nevers.prac.os3.nl.
+mail.nevers.prac.os3.nl. IN CNAME nevers.prac.os3.nl. ; for kees
+nevers.prac.os3.nl. IN MX 11 secondary.nevers.prac.os3.nl.
+secondary.nevers.prac.os3.nl. IN MX 0 secondary.nevers.prac.os3.nl.
+nevers.prac.os3.nl. IN MX 20 mulhouse.prac.os3.nl.
+nevers.prac.os3.nl. IN MX 21 mail.mulhouse.prac.os3.nl.
+nevers.prac.os3.nl. IN MX 30 hull.prac.os3.nl.
+nevers.prac.os3.nl. IN MX 31 mail.hull.prac.os3.nl.
+</code>
+
+This was the docker-compose.yml:
+<code>
+version: '3'
+services:
+  exim:
+    image: exim
+    ports:
+      - '145.100.111.9:25:25' #make sure 'dig -x IP' works!
+    volumes:
+      - $PWD/exim.conf:/etc/exim/exim.conf:ro
+      - $PWD/aliases:/etc/mail/aliases:ro
+      - $PWD/mailname:/etc/mail/mailname:ro
+    entrypoint: ["sh","-c"]
+    command: ["mkdir -p /var/mail; chmod 777 /var/mail; adduser -D os3student; /usr/sbin/exim -bdf -q15m"]
+  backup:
+    image: exim
+    ports:
+      - '145.100.111.10:25:25'
+    volumes:
+      - $PWD/exim2.conf:/etc/exim/exim.conf:ro
+      - $PWD/aliases:/etc/mail/aliases:ro
+      - $PWD/mailname2:/etc/mail/mailname:ro
+    entrypoint: ["sh","-c"]
+    command: ["mkdir -p /var/mail; chmod 777 /var/mail; adduser -D os3student; /usr/sbin/exim -bdf -q15m"]
+
+</code>
+
+== b. The email is delivered to your MTA when you turn it back on  == 
+When we turn the main back on,
+it receives new sent messages,
+not the messages received by backup when mine was done,
+this needs to be synced afterwards.
+But a better option would be to have NFS, CepFS or GlusterFS,
+that this is not needed.
+For my docker setup,
+this is not needed,
+I can just let both the primary and the backup point to the same storage directory/
+docker volume.
+
+
+The email works again,
+since it has a higher priority (lower number) in the DNS.
+<code>
+root@nevers:~/exim# docker exec -it exim_exim_1 cat /var/mail/os3student                              
+From svlentink@gmail.com Thu Oct 11 11:15:22 2018
+Return-path: <svlentink@gmail.com>
+Envelope-to: postmaster@nevers.prac.os3.nl
+Delivery-date: Thu, 11 Oct 2018 11:15:22 +0000
+Received: from [209.85.208.174] (helo=mail-lj1-f174.google.com)
+        by nevers.prac.os3.nl with esmtps (TLSv1.2:ECDHE-RSA-AES128-GCM-SHA256:128)
+        (Exim 4.91)
+        (envelope-from <svlentink@gmail.com>)
+        id 1gAYw5-00000G-Vm
+        for postmaster@nevers.prac.os3.nl; Thu, 11 Oct 2018 11:15:22 +0000
+Received: by mail-lj1-f174.google.com with SMTP id u21-v6so7820623lja.8
+        for <postmaster@nevers.prac.os3.nl>; Thu, 11 Oct 2018 04:15:21 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:from:date:message-id:subject:to;
+        bh=J5KFOiX+XyriXPtQSxd6z5vXLIG6Oli8a6JmfUjaOc0=;
+        b=sU+uipkj2S7oQlt10/iktwWUQmvijgqD1RUBoABOG1Icf79QS02wdi2U24nUQIWTDL
+         OY1HjNWE3Wd9morEsgULDNGxM010gLdMr8+S7rFSPUVYak4P6hpbmNblD/pfjRZMJQnS
+         uA4X0lSzZ60IFlK60pRf+F0dieaOe059/prBz97Zp16G0DV5gJCtDjTEC2vsh+PkMnN5
+         UBhJMK4B+3ltS5+9UgZZcCvaQVc/sPpWrU7EI5tDiXVKAI6Y48+BOAtxgXILsokh7YeA
+         9zBz6sGlTM6yddPx0RuaZfZQlqve4h6eF7beFOOEju3u7s4SQyMz8Xndzl7JxrUbg1IF
+         fFoQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
+        bh=J5KFOiX+XyriXPtQSxd6z5vXLIG6Oli8a6JmfUjaOc0=;
+        b=ruAXGbVagGrrJaec4hydGT1/f7f7VV3yl1sAVygIi+V/IFa5mijcISe90TkwVuqDD0
+         TuLkKNXo04XK++EhIOjBVsZOZO8/uOirPsFGCtySSbt3IagqOPV2HkV146U6T6+XcbHj
+         S2gVxhyhwVfUEpqtBFnbICZrRwkWkEMrUZPKB3n/iFw6IkhkYyjVFuxd7x33RyC5GHRr
+         xDK3HKL0n37VhQRn3Nyin/rNNbTcHRIQtdYPf5Ghh0307zHYKf+WoOGfZ2y61q+wjkw1
+         /smIXPxvYIAYq3yB2Ws2c14eyskvBqn8p7gvdLjgn7XR+tHdzdjlnogeP+lHO+wbzoFO
+         TlGA==
+X-Gm-Message-State: ABuFfoiXHPKE/8OJypvdjOgLj2tVH4oHEdvjZRgDspz4K/Uo+a2sJFkO
+        LnxMZJjcYPS3uIjj2pQqe3OhcQ/b5iGxFoxqxGKk4w==
+X-Google-Smtp-Source: ACcGV62yUeI9TQMxYttNWTlxfcTvZCSgsqBEwRVoTrxdNTI0pJ0xl11vcmvbrpCamtzhLBe+tNufEqDbumKaEDkX+Tk=
+X-Received: by 2002:a2e:1510:: with SMTP id s16-v6mr918359ljd.4.1539256520980;
+ Thu, 11 Oct 2018 04:15:20 -0700 (PDT)
+MIME-Version: 1.0
+From: Sander Lentink <svlentink@gmail.com>
+Date: Thu, 11 Oct 2018 13:15:09 +0200
+Message-ID: <CAM=p=-USY24tz_mBhZr8SWWSMk46G6qZK9HJ+mczOim1mokO4w@mail.gmail.com>
+Subject: tes
+To: postmaster@nevers.prac.os3.nl
+Content-Type: multipart/alternative; boundary="00000000000026c18f0577f2162c"
+
+--00000000000026c18f0577f2162c
+Content-Type: text/plain; charset="UTF-8"
+
+t
+Yours sincerely / Met vriendelijke groet,
+
+Sander Lent.ink <http://lent.ink>
+0031617012655
+
+--00000000000026c18f0577f2162c
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<div dir=3D"ltr">t<br clear=3D"all"><div><div dir=3D"ltr" class=3D"gmail_si=
+gnature" data-smartmail=3D"gmail_signature"><div dir=3D"ltr"><div><div dir=
+=3D"ltr">Yours sincerely / Met vriendelijke groet,<br>
+<br>
+Sander=C2=A0<a href=3D"http://lent.ink" target=3D"_blank">Lent.ink</a><br>
+0031617012655</div></div></div></div></div></div>
+
+--00000000000026c18f0577f2162c--
+</code>
+
 === Q7. Choose a console mail client that is available in the Ubuntu repositories install it and configure it to read mail for the account added before  ===
-== a. Where does the client store read emails?  == 
+
+CLient chosen: mutt, based on
+[[https://www.tecmint.com/best-commandline-email-clients-for-linux/|this]]
+knowlegde.
+
+<code>
+root@nevers:~/exim# docker-compose start backup
+Starting backup ... done
+root@nevers:~/exim# docker exec -it exim_backup_1 sh
+/ # apk add --no-cache mutt >/dev/null
+/ # mutt -f /var/mail/os3student
+
+q:Quit  d:Del  u:Undel  s:Save  m:Mail  r:Reply  g:Group  ?:Help                
+   1 N   Oct 11 Sander Lentink  (  20) test                                     
+   2 N   Oct 11 Sander Lentink  (  21) test
+
+---Mutt: /var/mail/os3student [Msgs:2 New:2 6.3K]---(date/date)---------(all)---
+</code>
+
+== a. Where does the client store read emails?  ==
+
+Exim wrote to /var/mail/USER and mutt prompted the first time,
+with the default option of /root/Mail.
+
 == b. In what format?  == 
+We have already seen in the previous logs that exim does mbox format by default,
+all mails in one file.
+Maildir is the current standard, which stores every msg in a seperate file,
+which is more efficient when accessing it with multiple clients.
+For my own server, I'll use dovecot with Maildir (will set it up after CIA exam).
 
 === Q8. Briefly explain  ===
-== a. what mail queues your mail server uses  == 
-== b. what is their purpose  == 
-== c. where are they located on your machine and  == 
+== a. what mail queues your mail server uses  ==
+During debugging I used 'exim -bpc' to check for messages in the queue.
+This is the count variant of '-bp',
+which presents a 'mailq' format.
+[[https://linux.die.net/man/8/exim|src]]
+
+Exim uses just one queue, it gives a status to a message,
+such as frozen.
+
+== b. what is their purpose  ==
+
+The purpose of a queue is to store for processing on a later moment.
+
+== c. where are they located on your machine and  ==
+<code>
+somehost:/var/spool/exim4# ls -al | tail -2
+drwxr-x--- 2 Debian-exim Debian-exim 4861952 Oct 12 08:23 input
+drwxr-x--- 2 Debian-exim Debian-exim 2433024 Oct 12 08:23 msglog
+somehost:/var/spool/exim4# exim -bpc
+466
+somehost:/var/spool/exim4# ls input|wc -l
+930
+somehost:/var/spool/exim4# ls msglog|wc -l
+465
+</code>
+
 == d. how can you interact with them?  == 
 
+Usually I loop over multiple host,
+when a smarthost gets busy:
+<code>
+cat eximbpc.sh 
+#!/bin/bash
+
+mkdir -p /tmp/eximbpc/
+for i in `get-hosts|sort|uniq`;
+do
+  # do not use: -o StrictHostKeyChecking=no
+  ssh -q -o PasswordAuthentication=no $i \
+  "[[ -f /usr/sbin/exim ]] && echo -n \`hostname\`' ' && exim -bpc" \
+  1> /tmp/eximbpc/$i &
+done 2> /dev/null
+sleep 10
+cat /tmp/eximbpc/* | sort -k2 -n
+echo 'You can run something like: exim -bp|grep "@"|sort|uniq -c|sort -n'
+
+cat `which get-hosts`
+#!/usr/bin/env python3
+
+with open('/etc/hosts') as f:
+ for line in f:
+   if len(line.split()) > 1 and line[0] != '#':
+     hostname = line.split()[1]
+     print(hostname)
+</code>
+
+So I use the exim CLI.

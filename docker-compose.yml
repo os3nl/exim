@@ -4,6 +4,9 @@ services:
     image: exim
     ports:
       - '145.100.111.9:25:25' #make sure 'dig -x IP' works!
+    extra_hosts:
+      - "nevers.prac.os3.nl:145.100.111.9"
+      - "secondary.nevers.prac.os3.nl:145.100.111.10"
     volumes:
       - $PWD/exim.conf:/etc/exim/exim.conf:ro
       - $PWD/aliases:/etc/mail/aliases:ro
@@ -14,6 +17,9 @@ services:
     image: exim
     ports:
       - '145.100.111.10:25:25'
+    extra_hosts:
+      - "nevers.prac.os3.nl:145.100.111.9"
+      - "secondary.nevers.prac.os3.nl:145.100.111.10"
     volumes:
       - $PWD/exim2.conf:/etc/exim/exim.conf:ro
       - $PWD/aliases2:/etc/mail/aliases:ro

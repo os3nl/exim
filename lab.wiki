@@ -913,7 +913,9 @@ services:
 
 </code>
 
-== b. The email is delivered to your MTA when you turn it back on  == 
+== b. The email is delivered to your MTA when you turn it back on  ==
+
+The following conclustion was wrong, we found out later:
 When we turn the main back on,
 it receives new sent messages,
 not the messages received by backup when mine was done,
@@ -997,6 +999,44 @@ Sander=C2=A0<a href=3D"http://lent.ink" target=3D"_blank">Lent.ink</a><br>
 
 --00000000000026c18f0577f2162c--
 </code>
+
+Later, David managed to get it working:
+<code>
+From David.Garay@os3.nl Fri Oct 12 12:56:15 2018
+Return-path: <David.Garay@os3.nl>
+Envelope-to: postmaster@nevers.prac.os3.nl
+Delivery-date: Fri, 12 Oct 2018 12:56:15 +0000
+Received: from [145.100.96.25] (helo=mail.serv.os3.nl)
+        by nevers.prac.os3.nl with esmtps (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256)
+        (Exim 4.91)
+        (envelope-from <David.Garay@os3.nl>)
+        id 1gAwzF-00000S-Vs
+        for postmaster@nevers.prac.os3.nl; Fri, 12 Oct 2018 12:56:14 +0000
+Received: from smtp.os3.nl (smtp.os3.nl [IPv6:2001:610:158:960::119])
+        by mail.serv.os3.nl (Postfix) with ESMTP id DFEA778D55
+        for <postmaster@nevers.prac.os3.nl>; Fri, 12 Oct 2018 14:56:13 +0200 (CEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=os3.nl; s=v1;
+        t=1539348973; bh=frcCV1k9oG9oKj3dpUqdJg1PxRT2RSN/XKdLCPjaYaY=;
+        h=To:Subject:Date:From:From;
+        b=JGETXeePeuvADty33D2jK7rcmCXUbPBcG1uXL2FXmHvTvj8sSFDaxy6DxfWb8dx4O
+         0SmioLALe68kpGw5ahoYXVlYeMVZp4rU/sv/4iHSD0tT3qCUoEzZrigzMD1L4+zn+B
+         5djYT4Im/c/FZeJL+3klgKkQ2AroYZQ/pP95XVOqspEvmwtXsObzH2UbgD3agb+hP2
+         9E1cWBniMRejmBp9pBR89YbG0PRIeBXXs18SaB8SiJblcKb7tjpuTpk03NYThC9ALz
+         tGT/FxLPrzc8CP+J9J+LeizFLanXtPDxbZVTqZyTIWZXeUMR3Co0sAZ8SfzT/tlRog
+         6nhSGoogPdd8g==
+Received: by smtp.os3.nl (Postfix, from userid 33)
+        id D9B5D791C0; Fri, 12 Oct 2018 14:56:13 +0200 (CEST)
+To: postmaster@nevers.prac.os3.nl
+Subject: test1
+MIME-Version: 1.0
+Date: Fri, 12 Oct 2018 14:56:13 +0200
+From: David.Garay@os3.nl
+Message-ID: <5bf9078bc30e7acc9c930d9b88de4c1d@os3.nl>
+X-Sender: dgaray@os3.nl
+User-Agent: Roundcube Webmail/1.2.3
+
+</code>
+We see that it was in his queue for a while, before it reached mine.
 
 === Q7. Choose a console mail client that is available in the Ubuntu repositories install it and configure it to read mail for the account added before  ===
 

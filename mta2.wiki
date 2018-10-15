@@ -1,0 +1,29 @@
+====== MTA2 Template ======
+https://www.os3.nl/2018-2019/courses/cia/labs/templ/mta2
+
+=== Q1. Now send an email to the loop using your own email address and show what happens on your MTA (logs error message)  ===
+
+For both my mailserver:
+<code>
+grep loop\@ *
+aliases:loop: loop@secondary.nevers.prac.os3.nl
+aliases2:loop: loop@nevers.prac.os3.nl
+</code>
+
+=== Q2. Can you change the behaviour of your MTA in response to this loop?  ===
+
+=== Q3.  ===
+== a. Create a new subdomain within your domain and add an MX entry to it  == 
+== b. Then extend your MTA configuration to handle virtual domains and have it also handle the email for the newly created domain  == 
+== c. Show how you test this  == 
+
+=== Q4.  ===
+== a. Write a small paragraph that highlights the advantages and disadvantages of SPF and DomainKeys Identified Mail (DKIM)  == 
+== b. What would you choose at a first glance and why?  == 
+== c. Configure your system to support one of the two Your system must support it for both sending and receiving email You might need additional software packages or patches  == 
+== d. Provide full email/MTA headers to prove that SPF/DKIM were implemented correctly on your system (sending and receiving)  == 
+
+=== Q5. Investigate what generic anti-spam open source software packages are out there choose one download it (compile it if necessary) and configure your MTA to use it Show that it works Make sure that in your MTA group there are 2 different anti-spam solutions implemented  ===
+
+=== Q6. Investigate these methods and add authentication to your MTA Show that it works  ===
+

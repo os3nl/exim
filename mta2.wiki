@@ -3,24 +3,429 @@ https://www.os3.nl/2018-2019/courses/cia/labs/templ/mta2
 
 === Q1. Now send an email to the loop using your own email address and show what happens on your MTA (logs error message)  ===
 
-For both my mailserver:
+For both my mailservers:
 <code>
 grep loop\@ *
 aliases:loop: loop@secondary.nevers.prac.os3.nl
 aliases2:loop: loop@nevers.prac.os3.nl
 </code>
 
+After no wild loops, I started debugging:
+<code>
+exim -bt -d-resolver loop@nevers.prac.os3.nl
+Exim version 4.91 uid=0 gid=0 pid=31 D=fbb95cfd
+Support for: crypteq IPv6 Expand_dlfunc OpenSSL move_frozen_messages Content_Scanning DKIM DNSSEC Event OCSP PRDR TCP_Fast_Open
+Lookups (built-in): lsearch wildlsearch nwildlsearch iplsearch dsearch passwd
+Authenticators: cram_md5 dovecot plaintext spa tls
+Routers: accept dnslookup ipliteral iplookup manualroute queryprogram redirect
+Transports: appendfile/maildir autoreply lmtp pipe smtp
+Malware: f-protd f-prot6d drweb aveserver fsecure kavdaemon sophie clamd mksd avast sock cmdline
+Fixed never_users: 0
+Configure owner: 0:0
+Size of off_t: 8
+Compiler: GCC [6.4.0]
+Library version: BDB: Compile: Berkeley DB 5.3.28: (September  9, 2013)
+                      Runtime: Berkeley DB 5.3.28: (September  9, 2013)
+Library version: OpenSSL: Compile: LibreSSL 2.7.4
+                          Runtime: LibreSSL 2.7.4
+                                 : built on: date not available
+Library version: PCRE: Compile: 8.42
+                       Runtime: 8.42 2018-03-20
+Loading lookup modules from /usr/lib/exim/
+Loaded 0 lookup modules
+Total 6 lookups
+WHITELIST_D_MACROS unset
+TRUSTED_CONFIG_LIST unset
+changed uid/gid: forcing real = effective
+  uid=0 gid=0 pid=31
+  auxiliary group list: <none>
+changed uid/gid: calling tls_validate_require_cipher
+  uid=100 gid=101 pid=32
+  auxiliary group list: <none>
+tls_validate_require_cipher child 32 ended: status=0x0
+configuration file is /etc/exim/exim.conf
+log selectors = 0000cffc 63201022 00000000
+trusted user
+admin user
+originator: uid=0 gid=0 login=root name=root
+sender address = root@secondary.nevers.prac.os3.nl
+Address testing: uid=0 gid=101 euid=0 egid=101
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Testing loop@nevers.prac.os3.nl
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Considering loop@nevers.prac.os3.nl
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+routing loop@nevers.prac.os3.nl
+--------> dnslookup router <--------
+local_part=loop domain=nevers.prac.os3.nl
+checking domains
+nevers.prac.os3.nl in "secondary.nevers.prac.os3.nl"? no (end of list)
+nevers.prac.os3.nl in "! +local_domains"? yes (end of list)
+calling dnslookup router
+dnslookup router called for loop@nevers.prac.os3.nl
+  domain = nevers.prac.os3.nl
+DNS lookup of nevers.prac.os3.nl (MX) succeeded
+dnslookup router: defer for loop@nevers.prac.os3.nl
+  message: host lookup did not complete
+loop@nevers.prac.os3.nl cannot be resolved at this time: host lookup did not complete
+search_tidyup called
+>>>>>>>>>>>>>>>> Exim pid=31 (main) terminating with rc=1 >>>>>>>>>>>>>>>>
+</code>
+
+Which was fixed by this line:
+<code>
+root@nevers:/home/slentink# grep 145 /etc/systemd/resolved.conf 
+DNS=145.100.104.117
+</code>
+
+after which we got:
+<code>
+/ # exim -bt -d-resolver loop@nevers.prac.os3.nl
+Exim version 4.91 uid=0 gid=0 pid=109 D=fbb95cfd
+Support for: crypteq IPv6 Expand_dlfunc OpenSSL move_frozen_messages Content_Scanning DKIM DNSSEC Event OCSP PRDR TCP_Fast_Open
+Lookups (built-in): lsearch wildlsearch nwildlsearch iplsearch dsearch passwd
+Authenticators: cram_md5 dovecot plaintext spa tls
+Routers: accept dnslookup ipliteral iplookup manualroute queryprogram redirect
+Transports: appendfile/maildir autoreply lmtp pipe smtp
+Malware: f-protd f-prot6d drweb aveserver fsecure kavdaemon sophie clamd mksd avast sock cmdline
+Fixed never_users: 0
+Configure owner: 0:0
+Size of off_t: 8
+Compiler: GCC [6.4.0]
+Library version: BDB: Compile: Berkeley DB 5.3.28: (September  9, 2013)
+                      Runtime: Berkeley DB 5.3.28: (September  9, 2013)
+Library version: OpenSSL: Compile: LibreSSL 2.7.4
+                          Runtime: LibreSSL 2.7.4
+                                 : built on: date not available
+Library version: PCRE: Compile: 8.42
+                       Runtime: 8.42 2018-03-20
+Loading lookup modules from /usr/lib/exim/
+Loaded 0 lookup modules
+Total 6 lookups
+WHITELIST_D_MACROS unset
+TRUSTED_CONFIG_LIST unset
+changed uid/gid: forcing real = effective
+  uid=0 gid=0 pid=109
+  auxiliary group list: <none>
+changed uid/gid: calling tls_validate_require_cipher
+  uid=100 gid=101 pid=110
+  auxiliary group list: <none>
+tls_validate_require_cipher child 110 ended: status=0x0
+configuration file is /etc/exim/exim.conf
+log selectors = 0000cffc 63201022 00000000
+trusted user
+admin user
+originator: uid=0 gid=0 login=root name=root
+sender address = root@secondary.nevers.prac.os3.nl
+Address testing: uid=0 gid=101 euid=0 egid=101
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Testing loop@nevers.prac.os3.nl
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Considering loop@nevers.prac.os3.nl
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+routing loop@nevers.prac.os3.nl
+--------> dnslookup router <--------
+local_part=loop domain=nevers.prac.os3.nl
+checking domains
+nevers.prac.os3.nl in "secondary.nevers.prac.os3.nl"? no (end of list)
+nevers.prac.os3.nl in "! +local_domains"? yes (end of list)
+calling dnslookup router
+dnslookup router called for loop@nevers.prac.os3.nl
+  domain = nevers.prac.os3.nl
+DNS lookup of nevers.prac.os3.nl (MX) succeeded
+DNS lookup of mailserver.nevers.prac.os3.nl (AAAA) succeeded
+DNS lookup of mailserver.nevers.prac.os3.nl (A) succeeded
+145.100.111.9 in "0.0.0.0 : 127.0.0.0/8"? no (end of list)
+DNS lookup of secondary.nevers.prac.os3.nl (AAAA) succeeded
+DNS lookup of secondary.nevers.prac.os3.nl (A) succeeded
+145.100.111.10 in "0.0.0.0 : 127.0.0.0/8"? no (end of list)
+DNS lookup of mulhouse.prac.os3.nl (AAAA) succeeded
+DNS lookup of mulhouse.prac.os3.nl (A) succeeded
+DNS lookup of mail.mulhouse.prac.os3.nl (AAAA) succeeded
+2001:610:158:1043:145:100:104:115 in "0.0.0.0 : 127.0.0.0/8"? no (end of list)
+DNS lookup of mail.mulhouse.prac.os3.nl (A) succeeded
+145.100.104.115 in "0.0.0.0 : 127.0.0.0/8"? no (end of list)
+DNS lookup of hull.prac.os3.nl (AAAA) succeeded
+DNS lookup of hull.prac.os3.nl (A) succeeded
+DNS lookup of mail.hull.prac.os3.nl (AAAA) succeeded
+DNS lookup of mail.hull.prac.os3.nl (A) succeeded
+145.100.104.167 in "0.0.0.0 : 127.0.0.0/8"? no (end of list)
+fully qualified name = nevers.prac.os3.nl
+host_find_bydns yield = HOST_FOUND (3); returned hosts:
+  mailserver.nevers.prac.os3.nl 145.100.111.9 MX=10 
+  secondary.nevers.prac.os3.nl 145.100.111.10 MX=11 
+  mulhouse.prac.os3.nl <null> MX=20 *
+  mail.mulhouse.prac.os3.nl 2001:610:158:1043:145:100:104:115 MX=21 
+  mail.mulhouse.prac.os3.nl 145.100.104.115 MX=21 
+  hull.prac.os3.nl <null> MX=30 *
+  mail.hull.prac.os3.nl 145.100.104.167 MX=31 
+set transport remote_smtp
+queued for remote_smtp transport: local_part = loop
+domain = nevers.prac.os3.nl
+  errors_to=NULL
+  domain_data=NULL localpart_data=NULL
+routed by dnslookup router
+  envelope to: loop@nevers.prac.os3.nl
+  transport: remote_smtp
+  host mailserver.nevers.prac.os3.nl [145.100.111.9] MX=10
+  host secondary.nevers.prac.os3.nl [145.100.111.10] MX=11
+  host mulhouse.prac.os3.nl MX=20
+  host mail.mulhouse.prac.os3.nl [2001:610:158:1043:145:100:104:115] MX=21
+  host mail.mulhouse.prac.os3.nl [145.100.104.115] MX=21
+  host hull.prac.os3.nl MX=30
+  host mail.hull.prac.os3.nl [145.100.104.167] MX=31
+loop@nevers.prac.os3.nl
+  router = dnslookup, transport = remote_smtp
+  host mailserver.nevers.prac.os3.nl [145.100.111.9]                     MX=10
+  host secondary.nevers.prac.os3.nl  [145.100.111.10]                    MX=11
+  host mulhouse.prac.os3.nl          [unknown]                           MX=20 ** unusable **
+  host mail.mulhouse.prac.os3.nl     [2001:610:158:1043:145:100:104:115] MX=21
+  host mail.mulhouse.prac.os3.nl     [145.100.104.115]                   MX=21
+  host hull.prac.os3.nl              [unknown]                           MX=30 ** unusable **
+  host mail.hull.prac.os3.nl         [145.100.104.167]                   MX=31
+search_tidyup called
+>>>>>>>>>>>>>>>> Exim pid=109 (main) terminating with rc=0 >>>>>>>>>>>>>>>>
+</code>
+
+So another test, which worked:
+<code>
+2018-10-15 19:16:18 1gC8Li-00001n-SU <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=3459 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:18 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:19 1gC8Li-00001n-SU [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:19 1gC8Li-00001n-SU [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:19 1gC8Li-00001n-SU => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 3528 byte chunk, total 3528\\n250 OK id=1gC8Lj-00001I-1c"
+2018-10-15 19:16:19 1gC8Li-00001n-SU Completed
+2018-10-15 19:16:19 1gC8Lj-00001r-6r <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=4029 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:19 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:19 1gC8Lj-00001r-6r [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:19 1gC8Lj-00001r-6r [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:19 1gC8Lj-00001r-6r => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 4110 byte chunk, total 4110\\n250 OK id=1gC8Lj-00001M-Cn"
+2018-10-15 19:16:19 1gC8Lj-00001r-6r Completed
+2018-10-15 19:16:19 1gC8Lj-00001v-IR <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=4599 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:19 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:19 1gC8Lj-00001v-IR [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:19 1gC8Lj-00001v-IR [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:19 1gC8Lj-00001v-IR => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 4692 byte chunk, total 4692\\n250 OK id=1gC8Lj-00001Q-OP"
+2018-10-15 19:16:19 1gC8Lj-00001v-IR Completed
+2018-10-15 19:16:20 1gC8Lj-00001z-U8 <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=5169 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:20 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:20 1gC8Lj-00001z-U8 [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:20 1gC8Lj-00001z-U8 [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:20 1gC8Lj-00001z-U8 => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 5274 byte chunk, total 5274\\n250 OK id=1gC8Lk-00001U-3N"
+2018-10-15 19:16:20 1gC8Lj-00001z-U8 Completed
+2018-10-15 19:16:20 1gC8Lk-000023-7d <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=5739 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:20 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:20 1gC8Lk-000023-7d [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:20 1gC8Lk-000023-7d [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:20 1gC8Lk-000023-7d => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 5856 byte chunk, total 5856\\n250 OK id=1gC8Lk-00001Y-Cy"
+2018-10-15 19:16:20 1gC8Lk-000023-7d Completed
+2018-10-15 19:16:20 1gC8Lk-000027-JD <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=6309 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:20 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:20 1gC8Lk-000027-JD [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:20 1gC8Lk-000027-JD [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:20 1gC8Lk-000027-JD => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 6438 byte chunk, total 6438\\n250 OK id=1gC8Lk-00001c-Og"
+2018-10-15 19:16:20 1gC8Lk-000027-JD Completed
+2018-10-15 19:16:21 1gC8Lk-00002B-Uv <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=6879 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:21 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:21 1gC8Lk-00002B-Uv [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:21 1gC8Lk-00002B-Uv [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:21 1gC8Lk-00002B-Uv => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 7020 byte chunk, total 7020\\n250 OK id=1gC8Ll-00001g-4c"
+2018-10-15 19:16:21 1gC8Lk-00002B-Uv Completed
+2018-10-15 19:16:21 1gC8Ll-00002F-9k <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=7449 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:21 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:21 1gC8Ll-00002F-9k [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:21 1gC8Ll-00002F-9k [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:21 1gC8Ll-00002F-9k => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 7602 byte chunk, total 7602\\n250 OK id=1gC8Ll-00001k-FD"
+2018-10-15 19:16:21 1gC8Ll-00002F-9k Completed
+2018-10-15 19:16:21 1gC8Ll-00002J-LM <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=8019 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:21 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:21 1gC8Ll-00002J-LM [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:21 1gC8Ll-00002J-LM [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:21 1gC8Ll-00002J-LM => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 8184 byte chunk, total 8184\\n250 OK id=1gC8Ll-00001o-RB"
+2018-10-15 19:16:21 1gC8Ll-00002J-LM Completed
+2018-10-15 19:16:22 1gC8Lm-00002N-0T <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=8589 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:22 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:22 1gC8Lm-00002N-0T [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:22 1gC8Lm-00002N-0T [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:22 1gC8Lm-00002N-0T => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 836 byte chunk, total 8766\\n250 OK id=1gC8Lm-00001s-5o"
+2018-10-15 19:16:22 1gC8Lm-00002N-0T Completed
+2018-10-15 19:16:22 1gC8Lm-00002R-B7 <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=9159 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:22 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:22 1gC8Lm-00002R-B7 [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:22 1gC8Lm-00002R-B7 [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:22 1gC8Lm-00002R-B7 => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 1157 byte chunk, total 9348\\n250 OK id=1gC8Lm-00001w-I1"
+2018-10-15 19:16:22 1gC8Lm-00002R-B7 Completed
+2018-10-15 19:16:22 1gC8Lm-00002V-Ne <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=9729 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:22 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:22 1gC8Lm-00002V-Ne [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:22 1gC8Lm-00002V-Ne [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:23 1gC8Lm-00002V-Ne => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 1739 byte chunk, total 9930\\n250 OK id=1gC8Lm-000020-T3"
+2018-10-15 19:16:23 1gC8Lm-00002V-Ne Completed
+2018-10-15 19:16:23 1gC8Ln-00002Z-3b <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=10299 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:23 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:23 1gC8Ln-00002Z-3b [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:23 1gC8Ln-00002Z-3b [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:23 1gC8Ln-00002Z-3b => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 2321 byte chunk, total 10512\\n250 OK id=1gC8Ln-000024-9i"
+2018-10-15 19:16:23 1gC8Ln-00002Z-3b Completed
+2018-10-15 19:16:23 1gC8Ln-00002d-F3 <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=10869 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:23 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:23 1gC8Ln-00002d-F3 [145.100.111.9] SSL verify error: depth=0 error=self signed certificate cert=/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl
+2018-10-15 19:16:23 1gC8Ln-00002d-F3 [145.100.111.9] SSL verify error: certificate name mismatch: DN="/C=UK/O=Exim Developers/CN=nevers.prac.os3.nl" H="mailserver.nevers.prac.os3.nl"
+2018-10-15 19:16:23 1gC8Ln-00002d-F3 => loop@nevers.prac.os3.nl <loop@secondary.nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=mailserver.nevers.prac.os3.nl [145.100.111.9] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 2903 byte chunk, total 11094\\n250 OK id=1gC8Ln-000028-Jx"
+2018-10-15 19:16:23 1gC8Ln-00002d-F3 Completed
+2018-10-15 19:16:23 1gC8Ln-00002h-PE <= sanderlentink@mdmail.nl H=(nevers.prac.os3.nl) [172.20.0.1] P=esmtps X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K S=11439 id=CAMU2pL8+Hb0889W6qpQKzyy0YQmpr5Zc6br3j+4oNC3yoxGTug@mail.gmail.com
+2018-10-15 19:16:23 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:23 1gC8Ln-00002h-PE ** loop@secondary.nevers.prac.os3.nl: Too many "Received" headers - suspected mail loop
+2018-10-15 19:16:23 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:23 1gC8Ln-00002k-SY <= <> R=1gC8Ln-00002h-PE U=exim P=local S=12678
+2018-10-15 19:16:23 Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+2018-10-15 19:16:24 1gC8Ln-00002k-SY H=aspmx.l.google.com [2a00:1450:4013:c06::1a] Address not available
+2018-10-15 19:16:24 1gC8Ln-00002h-PE Completed
+2018-10-15 19:16:24 1gC8Ln-00002k-SY => sanderlentink@mdmail.nl R=dnslookup T=remote_smtp H=aspmx.l.google.com [108.177.127.26] X=TLSv1.2:ECDHE-RSA-CHACHA20-POLY1305:256 CV=yes K C="250 2.0.0 OK t6-v6si1836231edt.159 - gsmtp"
+2018-10-15 19:16:24 1gC8Ln-00002k-SY Completed
+</code>
+
+What happens:
+<code>
+2018-10-15 19:16:23 1gC8Ln-000028-Jx => loop@secondary.nevers.prac.os3.nl <loop@nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=secondary.nevers.prac.os3.nl [145.100.111.10] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 3189 byte chunk, total 11380\\n250 OK id=1gC8Ln-00002h-PE"
+</code>
+
+<code>
+2018-10-15 19:29:09 1gC8Y9-000035-65 => loop@secondary.nevers.prac.os3.nl <loop@nevers.prac.os3.nl> R=dnslookup T=remote_smtp H=secondary.nevers.prac.os3.nl [145.100.111.10] X=TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256 CV=no K C="250- 2929 byte chunk, total 11120\\n250 OK id=1gC8Y9-00003q-BM"
+</code>
+
+The max header length or hop count is reached.
+
 === Q2. Can you change the behaviour of your MTA in response to this loop?  ===
 
+The [[https://www.exim.org/exim-html-current/doc/html/spec_html/ch-main_configuration.html|documenations]] tells us:
+<code>
+header_maxsize	total size of message header
+header_line_maxsize	individual header line limit
+</code>
+
+We read [[http://www.exim.org/exim-html-3.20/doc/html/spec_5.html|here]]
+that the hop count has no effect:
+<code>
+-h <number>
+This option is accepted for compatibility with Sendmail, but at present has no effect. (In Sendmail it overrides the `hop count' obtained by counting Received: headers.)
+</code>
+
 === Q3.  ===
-== a. Create a new subdomain within your domain and add an MX entry to it  == 
+== a. Create a new subdomain within your domain and add an MX entry to it  ==
+
+<code>
+root@nevers:/home/slentink# dig nevers.prac.os3.nl mx +short
+30 hull.prac.os3.nl.
+10 mailserver.nevers.prac.os3.nl.
+21 mail.mulhouse.prac.os3.nl.
+31 mail.hull.prac.os3.nl.
+20 mulhouse.prac.os3.nl.
+11 secondary.nevers.prac.os3.nl.
+root@nevers:/home/slentink# dig secondary.nevers.prac.os3.nl mx +short                                 
+0 secondary.nevers.prac.os3.nl.
+</code>
+
+Since I already had a subdomain,
+I just bind one docker-container to both IPs
+
 == b. Then extend your MTA configuration to handle virtual domains and have it also handle the email for the newly created domain  == 
-== c. Show how you test this  == 
+
+and set local domains to:
+<code>
+domainlist local_domains = nevers.prac.os3.nl : secondary.nevers.prac.os3.nl
+</code>
+
+== c. Show how you test this  ==
+
+<code>
+version: '3'
+services:
+  exim:
+    image: exim
+    ports:
+      - '145.100.111.9:25:25'
+      - '145.100.111.10:25:25'
+    volumes:
+      - $PWD/exim3.conf:/etc/exim/exim.conf:ro
+      - $PWD/aliases2:/etc/mail/aliases:ro
+      - $PWD/mailname2:/etc/mail/mailname:ro
+    entrypoint: ["sh","-c"]
+    command: ["mkdir -p /var/mail; chmod 777 /var/mail; adduser -D os3student; /usr/sbin/exim -bdf -q15m"]
+
+</code>
+It now for both postmaster@(secondary.)nevers.prac.os3.nl
+and stores it in /var/mai/os3student.
+
+
+Which I already discovered in the previous lab,
+when I used secondary as my backup and had both domains in local_domains.
+When the primary was down, the secondary would receive and store it.
+
 
 === Q4.  ===
 == a. Write a small paragraph that highlights the advantages and disadvantages of SPF and DomainKeys Identified Mail (DKIM)  == 
-== b. What would you choose at a first glance and why?  == 
+
+First we note that receivers are different,
+some check only one of the two,
+therefore the advice is to have both.
+
+DKIM signs the email,
+which prevents alteration of the mail,
+SPF does not offer this.
+
+SPF defines which sources (IPs) the email could come from (senders),
+DKIM tells us by which key it is signed.
+Both records are stored in DNS.
+
+[[https://blog.woodpecker.co/cold-email/spf-dkim/|src]]
+
+== b. What would you choose at a first glance and why?  ==
+
+I like to be portable, if I want to send from my laptop,
+without a server, SPF would require me to at my IP of that place.
+With DKIM, I can just sign and send from any place
+and the contents cannot be altered.
+
+DKIM is my weapon of choice,
+but wait,
+servers usually are more into checking sources based on SPF,
+oh well, I just go with the flow and use both.
+I'm not an idealist but a realist,
+I want my email to be delivered.
+
+[[https://3.bp.blogspot.com/-uUck832XVq4/VrqPLXM5-BI/AAAAAAAAAQg/mo9OPpUCOTQ/s1600/email-authentication-stats-gmail-2016.png|src]]
+
 == c. Configure your system to support one of the two Your system must support it for both sending and receiving email You might need additional software packages or patches  == 
+
+For SPF, no additional alterations are needed on the MTA,
+only if we want it to check incoming, not for sending.
+So the choice is, do we want to change DNS (SPF) or DNS and MTA (DKIM).
+It will be SPF.
+<code>
+v=spf1 mx ~all
+</code>
+The tilde means SoftFail.
+[[http://www.openspf.org/SPF_Record_Syntax|src]]
+
+
 == d. Provide full email/MTA headers to prove that SPF/DKIM were implemented correctly on your system (sending and receiving)  == 
 
 === Q5. Investigate what generic anti-spam open source software packages are out there choose one download it (compile it if necessary) and configure your MTA to use it Show that it works Make sure that in your MTA group there are 2 different anti-spam solutions implemented  ===

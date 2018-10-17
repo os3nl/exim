@@ -425,10 +425,245 @@ v=spf1 mx ~all
 The tilde means SoftFail.
 [[http://www.openspf.org/SPF_Record_Syntax|src]]
 
+Which was inserted:
+<code>
+dig nevers.prac.os3.nl txt +short
+"v=spf1" "mx" "~all"
+root@lent:~/Dropbox/webIDE/bind# dig secondary.nevers.prac.os3.nl txt +short           
+"v=spf1" "mx" "~all"
+</code>
+
+So if we now have outgoing mail from my MTA,
+the sender could check that the SPF records match.
+For incoming email (e.g. from gmail),
+nothing has changed.
+
+To check incoming we find how to config exim
+[[https://www.exim.org/exim-html-current/doc/html/spec_html/ch-dkim_and_spf.html|here]].
+We copied their example:
+<code>
+acl_check_rcpt:
+
+  deny spf = fail
+     message = $sender_host_address is not allowed to send mail from \
+               ${if def:sender_address_domain \
+                    {$sender_address_domain}{$sender_helo_name}}.  \
+               Please see http://www.openspf.org/Why?scope=\
+               ${if def:sender_address_domain {mfrom}{helo}};\
+               identity=${if def:sender_address_domain \
+                             {$sender_address}{$sender_helo_name}};\
+               ip=$sender_host_address
+</code>
+[[https://github.com/os3nl/exim/commit/f400e4f668a7d7f039e3cda4776d6b0177e62926|link to commit]].
+
+And with no surprise, gmail still comes through,
+SPF records are correct.
 
 == d. Provide full email/MTA headers to prove that SPF/DKIM were implemented correctly on your system (sending and receiving)  == 
 
+We send an email:
+<code>
+root@nevers:~/exim# docker exec -it exim_backup_1 sh
+/ # sendmail sanderlentink@mdmail.nl <<'EOF'
+From: "student" <postmaster@secondary.nevers.prac.os3.nl>
+To: "werknemer" <sanderlentink@mdmail.nl>
+Reply-To: postmaster@secondary.nevers.prac.os3.nl
+Subject: spf
+Content-Type: text/plain; charset=utf-8
+
+test
+EOF
+</code>
+
+Which did come in spam folder, but SPF passed:
+<code>
+Delivered-To: sanderlentink@mdmail.nl
+Received: by 2002:ac2:5094:0:0:0:0:0 with SMTP id f20-v6csp4910595lfm;
+        Mon, 15 Oct 2018 23:55:03 -0700 (PDT)
+X-Google-Smtp-Source: ACcGV63MnbZoqSOUyhDMMsRCZBi8F/Dzps01CbjMBpxug7Y+sOoH8tTiXGQez6zXuNemaZiUMWsq
+X-Received: by 2002:a17:906:7845:: with SMTP id p5-v6mr22405848ejm.213.1539672903362;
+        Mon, 15 Oct 2018 23:55:03 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1539672903; cv=none;
+        d=google.com; s=arc-20160816;
+        b=F57FdBSkrm98yLipOdYxLKvBcV9b5qi3VPt/PyeB8j9UoQExglZjH0UgmMQZcGpBnZ
+         sRFXUqwqpBB4lq3Xm8luOmllSQSFLNcOsiy6mGZUe8T6KPSmzWf5O/7tLoyY052m8nCo
+         1J47wH0YW5xKTPPrEDdbD8Uj+GynLE6NlnSV8xgjA6WUBkIk5HzAqt74qYDW/DG/w0Ze
+         4SWAzHnwMRJek/FIezP0BIZ/AydzluVMk5o/tKwqBqqhn1x/tbMONH5mc68MY6esBU6h
+         GVxwu3yf7Eu/8obkYI8/BxVezX3GvCTKJH+JPxc5VyDlhWBoDPq1KeG/Cmob7bvFj4Sw
+         +uDA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20160816;
+        h=date:message-id:subject:reply-to:to:from;
+        bh=g3zLYH4xKxcPrHOD18z9YfpQcnk/GaJedfustWU5uGs=;
+        b=tFtkUg7ZMtEgycJeQFsukvCytjiv2KQYqqTi1EWhNLlzw3zipp35BY8Cm8JsIxdl0z
+         mokmOWac33TMLZC1/8jf7I+92ZVdgoP2JfFvivrxdo4MVFHkXh7RrIT40Ks/iGqoDuMy
+         yZ+8CSj12c2BJZq598s3IvsmYn9xOBIIGIji70tn1jkNCy4eD5M7dGbC4KnOsNQBXRG0
+         FidWe97Hpdse7tAbJlOJkv4fYR4mQcZoPw200zzT/BZolj8PBv1cbRcleMmSc2GrzUH7
+         Ed+3JfPNJvC8Q0lFj7JU2HC4BY8ADD9dXB90NuPw7nokkhVh0ZCt8Qj2lEljrpt1HG6G
+         zajA==
+ARC-Authentication-Results: i=1; mx.google.com;
+       spf=pass (google.com: best guess record for domain of root@secondary.nevers.prac.os3.nl designates 145.100.104.117 as permitted sender) smtp.mailfrom=root@secondary.nevers.prac.os3.nl
+Return-Path: <root@secondary.nevers.prac.os3.nl>
+Received: from secondary.nevers.prac.os3.nl (nevers.studlab.os3.nl. [145.100.104.117])
+        by mx.google.com with ESMTPS id z28-v6si7848865edl.239.2018.10.15.23.55.02
+        for <sanderlentink@mdmail.nl>
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Mon, 15 Oct 2018 23:55:02 -0700 (PDT)
+Received-SPF: pass (google.com: best guess record for domain of root@secondary.nevers.prac.os3.nl designates 145.100.104.117 as permitted sender) client-ip=145.100.104.117;
+Authentication-Results: mx.google.com;
+       spf=pass (google.com: best guess record for domain of root@secondary.nevers.prac.os3.nl designates 145.100.104.117 as permitted sender) smtp.mailfrom=root@secondary.nevers.prac.os3.nl
+Received: from root by secondary.nevers.prac.os3.nl with local (Exim 4.91) (envelope-from <root@secondary.nevers.prac.os3.nl>) id 1gCJFt-00005o-UT for sanderlentink@mdmail.nl; Tue, 16 Oct 2018 06:55:01 +0000
+From: student <postmaster@secondary.nevers.prac.os3.nl>
+To: werknemer <sanderlentink@mdmail.nl>
+Reply-To: postmaster@secondary.nevers.prac.os3.nl
+Subject: spf
+Content-Type: text/plain; charset=utf-8
+Message-Id: <E1gCJFt-00005o-UT@secondary.nevers.prac.os3.nl>
+Date: Tue, 16 Oct 2018 06:55:01 +0000
+
+test
+</code>
+
+See the line (from above msg):
+<code>
+Received-SPF: pass (google.com: best guess
+</code>
+
+We have seen that for outgoing mail,
+we set our SPF in our DNS.
+For incoming mail, we specify an ACL,
+to check incoming mail.
+
+
 === Q5. Investigate what generic anti-spam open source software packages are out there choose one download it (compile it if necessary) and configure your MTA to use it Show that it works Make sure that in your MTA group there are 2 different anti-spam solutions implemented  ===
+
+We read
+[[https://www.exim.org/exim-html-current/doc/html/spec_html/ch-content_scanning_at_acl_time.html|here]]
+the options for Exim.
+
+During our initial build, we had WITH_CONTENT_SCAN set to yes.
+
+We search for packages in Alpine:
+<code>
+/ # apk search -v '*mail*' |grep -i scan
+claws-mail-plugins-clamd-3.15.1-r0 - Use Clam AntiVirus to scan messages in Claws Mail
+perl-mail-clamav-0.29-r14 - Perl extension for the clamav virus scanner
+perl-mail-clamav-doc-0.29-r14 - Perl extension for the clamav virus scanner (documentation)
+/ # apk search -v '*mail*' |grep -i spam
+claws-mail-plugins-spamassassin-3.15.1-r0 - Spamassassin plugin for Claws Mail
+perl-mail-spamassassin-doc-3.4.1-r2 - SpamAssassin is an extensible email filter which is used to identify spam (documentation)
+claws-mail-plugins-spamreport-3.15.1-r0 - Report spam mail to various places with Claws Mail
+perl-mail-spamassassin-3.4.1-r8 - SpamAssassin perl library
+/ # apk search -v '*mail*' |grep -i attach
+claws-mail-plugins-att-remove-3.15.1-r0 - Attachments remover plugin for Claws Mail
+claws-mail-plugins-attatchwarner-3.15.1-r0 - Attachments warner plugin for Claws Mail
+
+</code>
+
+When going manually through all mail options (without grep)
+we find more interesting stuff (that I put here, for me to lookup later):
+<code>
+roundcubemail-installer-1.3.6-r1 - Roundcubemail installer script
+kamailio-rabbitmq-5.1.4-r0 - Kamailio RabbitMQ related modules for Kamailio
+kamailio-5.1.4-r0 - Open Source SIP Server
+kamailio-cpl-5.1.4-r0 - Kamailio CPL (Call Processing Language) interpreter
+kamailio-redis-5.1.4-r0 - Kamailio Redis NoSQL support
+kamailio-xmpp-5.1.4-r0 - Kamailio XMPP (Jabber) gateway
+kamailio-kazoo-5.1.4-r0 - Kamailio Kazoo VoIP platform support
+gnupg-2.2.8-r0 - GNU Privacy Guard 2 - a PGP replacement tool
+mmh-0.3-r1 - MUA for users who like the unix philosophy
+kamailio-dbg-5.1.4-r0 - Open Source SIP Server (debug symbols)
+kamailio-ldap-5.1.4-r0 - Kamailio LDAP search functions
+kamailio-carrierroute-5.1.4-r0 - Kamailio carrier grade routing functions
+</code>
+
+So we install a scanner:
+<code>
+/ # apk add --no-cache clamav
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/main/x86_64/APKINDEX.tar.gz
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/community/x86_64/APKINDEX.tar.gz
+(1/10) Installing fts (1.2.7-r1)
+(2/10) Installing ncurses-terminfo-base (6.1_p20180818-r1)
+(3/10) Installing ncurses-terminfo (6.1_p20180818-r1)
+(4/10) Installing ncurses-libs (6.1_p20180818-r1)
+(5/10) Installing clamav-daemon (0.100.1-r0)
+Executing clamav-daemon-0.100.1-r0.pre-install
+(6/10) Installing libbz2 (1.0.6-r6)
+(7/10) Installing clamav-libs (0.100.1-r0)
+(8/10) Installing freshclam (0.100.1-r0)
+Executing freshclam-0.100.1-r0.pre-install
+(9/10) Installing clamav-scanner (0.100.1-r0)
+(10/10) Installing clamav (0.100.1-r0)
+Executing busybox-1.28.4-r1.trigger
+OK: 19 MiB in 27 packages
+</code>
+
+exim config:
+<code>
+av_scanner = clamd:/run/clamav/clamd.sock
+</code>
+
+Debugging:
+<code>
+/ # clamd
+LibClamAV Error: cli_loaddbdir(): No supported database files found in /var/lib/clamav
+Wed Oct 17 09:52:04 2018 -> !Can't open file or directory
+/ # apk search -v '*clam*'
+freshclam-0.100.1-r0 - Auto-updater for the Clam Antivirus scanner data-files
+clamav-dev-0.100.1-r0 - An anti-virus toolkit for UNIX eis-ng backport (development files)
+clamav-libs-0.100.1-r0 - An anti-virus toolkit for UNIX eis-ng backport (libraries)
+acf-clamav-0.8.0-r2 - A web-based system administration interface for clamav
+clamav-daemon-0.100.1-r0 - ClamAV daemon scanner
+nagios-plugins-tcp-2.2.1-r5 - Nagios plugins check_tcp, check_clamd, check_ftp, check_imap, check_jabber, check_nntp, check_nntps, check_pop, check_simap, check_spop, check_ssmtp, check_udp
+clamav-db-0.100.1-r0 - ClamAV dummy package for compatibility
+clamsmtp-1.10-r15 - An SMTP Virus Filter
+clamav-libunrar-0.100.1-r0 - ClamAV unrar libraries
+clamav-daemon-openrc-0.100.1-r0 - ClamAV anti-virus scanner daemon (OpenRC init scripts)
+claws-mail-plugins-clamd-3.15.1-r0 - Use Clam AntiVirus to scan messages in Claws Mail
+perl-mail-clamav-0.29-r14 - Perl extension for the clamav virus scanner
+freshclam-openrc-0.100.1-r0 - Auto-updater for the Clam Antivirus scanner data-files (OpenRC init scripts)
+clamav-scanner-0.100.1-r0 - ClamAV command-line scanner and utils
+clamav-milter-0.100.1-r0 - ClamAV milter
+perl-mail-clamav-doc-0.29-r14 - Perl extension for the clamav virus scanner (documentation)
+clamav-doc-0.100.1-r0 - An anti-virus toolkit for UNIX eis-ng backport (documentation)
+clamsmtp-doc-1.10-r15 - An SMTP Virus Filter (documentation)
+acf-clamsmtp-0.6.0-r2 - A web-based system administration interface for clamsmtp
+clamav-0.100.1-r0 - An anti-virus toolkit for UNIX eis-ng backport
+/ # apk add --no-cache clamav-libs
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/main/x86_64/APKINDEX.tar.gz
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/community/x86_64/APKINDEX.tar.gz
+OK: 19 MiB in 27 packages
+/ # apk add --no-cache clamav-db
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/main/x86_64/APKINDEX.tar.gz
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/community/x86_64/APKINDEX.tar.gz
+(1/1) Installing clamav-db (0.100.1-r0)
+Executing busybox-1.28.4-r1.trigger
+OK: 19 MiB in 28 packages
+/ # apk add --no-cache clamav-scanner
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/main/x86_64/APKINDEX.tar.gz
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/community/x86_64/APKINDEX.tar.gz
+OK: 19 MiB in 28 packages
+</code>
+
+We could use this default,
+but lets make it a bit more creative:
+<code>
+av_scanner = cmdline:/bin/cat %s:viagra:'(.+)'
+
+#and under data acl section
+deny message = This message contains malware ($malware_name)
+     malware = *
+</code>
+It cats the content and tries to match viagra.
+but.. it did not come through,
+somewhere, an intermediate also filters (or google does not send out 'buy viagra').
+
+So we changed it to match on 'windows'.
+<code>
+2018-10-17 10:04:57 1gCihF-00000E-2w malware acl condition: cmdline  : scanner returned error code: 256
+2018-10-17 10:04:57 1gCihF-00000E-2w H=(mail-lf1-f42.google.com) [209.85.167.42] X=TLSv1.2:ECDHE-RSA-AES128-GCM-SHA256:128 CV=no F=<sanderlentink@mdmail.nl> temporarily rejected after DATA
+</code>
+Our scanning works!
+
 
 === Q6. Investigate these methods and add authentication to your MTA Show that it works  ===
 

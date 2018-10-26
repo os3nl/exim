@@ -667,3 +667,85 @@ Our scanning works!
 
 === Q6. Investigate these methods and add authentication to your MTA Show that it works  ===
 
+We have already seen in the online debugging tools (EHLO output)
+and in our logs, that TLS is used with a self signed certificate:
+<code>
+Warning: No server certificate defined; will use a selfsigned one.
+ Suggested action: either install a certificate or change tls_advertise_hosts option
+</code>
+
+Output of
+[[https://mxtoolbox.com/SuperTool.aspx?action=smtp%3asecondary.nevers.prac.os3.nl&run=toolpage|webtool]]:
+<code>
+Connecting to 145.100.111.10
+
+220 secondary.nevers.prac.os3.nl ESMTP Exim 4.91 Thu, 18 Oct 2018 06:19:47 +0000 [722 ms]
+EHLO EC2AMAZ-CT1LM3F.mxtoolbox.com
+250-secondary.nevers.prac.os3.nl Hello EC2AMAZ-CT1LM3F.mxtoolbox.com [18.205.72.90]
+250-SIZE 52428800
+250-8BITMIME
+250-PIPELINING
+250-CHUNKING
+250-STARTTLS
+250-PRDR
+250 HELP [703 ms]
+MAIL FROM:<supertool@mxtoolbox.com>
+250 OK [704 ms]
+RCPT TO:<test@mxtoolboxsmtpdiag.com>
+250 Accepted [799 ms]
+
+LookupServerv2 4570ms
+</code>
+
+But no '250-AUTH' as mentioned
+[[https://www.exim.org/exim-html-current/doc/html/spec_html/ch-smtp_authentication.html|here]].
+(RFC2554)
+
+In
+[[https://git.alpinelinux.org/cgit/aports/tree/community/exim/exim.Makefile?id=e34dc275a5c7adabc2c067b83f400285a3f45e43|the makefile]]
+used, we see:
+<code>
+AUTH_CRAM_MD5=yes
+AUTH_DOVECOT=yes
+AUTH_PLAINTEXT=yes
+AUTH_SPA=yes
+AUTH_TLS=yes
+SUPPORT_TLS=yes
+USE_OPENSSL_PC=openssl
+</code>
+
+Which means we can just configure it without reinstall/making.
+We add the following to our config:
+<code>
+begin authenticators
+fixed_plain:
+  driver = plaintext
+  public_name = PLAIN
+  server_prompts = :
+  server_condition = \
+    ${if and {{eq{$auth2}{username}}{eq{$auth3}{mysecret}}}}
+  server_set_id = $auth2
+</code>
+THe plaintext auth is allowed when inside TLS,
+just like with basic auth on HTTP.
+
+Now we verify it:
+<code>
+root@nevers:~# telnet secondary.nevers.prac.os3.nl 25
+Trying 145.100.111.10...
+Connected to secondary.nevers.prac.os3.nl.
+Escape character is '^]'.
+220 secondary.nevers.prac.os3.nl ESMTP Exim 4.91 Thu, 18 Oct 2018 06:37:05 +0000
+EHLO os3student
+250-secondary.nevers.prac.os3.nl Hello os3student [145.100.111.10]
+250-SIZE 52428800
+250-8BITMIME
+250-PIPELINING
+250-AUTH PLAIN
+250-CHUNKING
+250-STARTTLS
+250-PRDR
+250 HELP
+</code>
+
+And yes, we have 250-AUTH.
